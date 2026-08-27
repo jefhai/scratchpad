@@ -1,9 +1,24 @@
 (() => {
   const editorSelector = "textarea.editor";
   const indentModeKey = "workbench-indent-mode";
-  const underlineCanvas = document.createElement("canvas");
+  const underlineMirror = document.createElement("div");
+  const underlineMarker = document.createElement("span");
   const heldHistoryShortcuts = new Set();
   let underlineFrame = 0;
+
+  Object.assign(underlineMirror.style, {
+    position: "fixed",
+    top: "0",
+    left: "-100000px",
+    visibility: "hidden",
+    pointerEvents: "none",
+    margin: "0",
+    border: "0",
+    whiteSpace: "pre",
+    overflow: "visible",
+  });
+  underlineMirror.setAttribute("aria-hidden", "true");
+  document.body.append(underlineMirror);
 
   function historyShortcutKey(event) {
     if ((!event.ctrlKey && !event.metaKey) || event.altKey) return null;
@@ -72,6 +87,40 @@
     }
   }
 
+  function measureUnderlineLine(editor, line) {
+    const style = getComputedStyle(editor);
+    Object.assign(underlineMirror.style, {
+      width: `${editor.clientWidth}px`,
+      boxSizing: "border-box",
+      padding: `${style.paddingTop} 0 0`,
+      font: style.font,
+      fontKerning: style.fontKerning,
+      fontFeatureSettings: style.fontFeatureSettings,
+      fontVariationSettings: style.fontVariationSettings,
+      lineHeight: style.lineHeight,
+      letterSpacing: style.letterSpacing,
+      tabSize: style.tabSize,
+      textRendering: style.textRendering,
+      direction: style.direction,
+    });
+    underlineMarker.textContent = line || "\u200b";
+    underlineMirror.replaceChildren(underlineMarker);
+
+    const mirrorRect = underlineMirror.getBoundingClientRect();
+    const markerRect = underlineMarker.getBoundingClientRect();
+    const editorRect = editor.getBoundingClientRect();
+    const scaleX = editor.offsetWidth > 0
+      ? editorRect.width / editor.offsetWidth
+      : 1;
+    const scaleY = editor.offsetHeight > 0
+      ? editorRect.height / editor.offsetHeight
+      : scaleX;
+    return {
+      bottom: (markerRect.bottom - mirrorRect.top) / scaleY,
+      width: line ? markerRect.width / scaleX : 0,
+    };
+  }
+
   function updateUnderlineForSelection(editor) {
     if (document.activeElement !== editor) return;
 
@@ -85,33 +134,25 @@
       : editor.selectionEnd;
     const lineIndex = editor.value.slice(0, focusPosition).split(/\r?\n/).length - 1;
     const line = editor.value.split(/\r?\n/)[lineIndex] || "";
+    let activeLineNumber = null;
     editor.parentElement.querySelectorAll(".line-numbers span").forEach(
-      (lineNumber, index) => lineNumber.classList.toggle("active", index === lineIndex),
+      (lineNumber, index) => {
+        const isActive = index === lineIndex;
+        lineNumber.classList.toggle("active", isActive);
+        if (isActive) activeLineNumber = lineNumber;
+      },
     );
     const style = getComputedStyle(editor);
-    const lineHeight = Number.parseFloat(style.lineHeight) || 30;
     const paddingTop = Number.parseFloat(style.paddingTop) || 0;
     const paddingLeft = Number.parseFloat(style.paddingLeft) || 0;
-    const fontSize = Number.parseFloat(style.fontSize) || 13;
-    const letterSpacing = Number.parseFloat(style.letterSpacing) || 0;
-    const context = underlineCanvas.getContext("2d");
-    if (!context) return;
-
-    context.font = style.font;
-    const expandedLine = line.replace(
-      /\t/g,
-      " ".repeat(getSpacesPerTab(editor)),
-    );
-    const textWidth = context.measureText(expandedLine).width
-      + Math.max(0, expandedLine.length - 1) * letterSpacing;
+    const measuredLine = measureUnderlineLine(editor, line);
     const underlineLeft = 8;
-    const textEnd = textWidth > 0
-      ? editor.offsetLeft + paddingLeft - editor.scrollLeft + textWidth
+    const textEnd = measuredLine.width > 0
+      ? editor.offsetLeft + paddingLeft - editor.scrollLeft + measuredLine.width
       : editor.offsetLeft - 1;
-    const underlineTop = paddingTop
-      + lineIndex * lineHeight
-      + Math.max(0, (lineHeight - fontSize) / 2)
-      + fontSize
+    const underlineTop = (activeLineNumber?.offsetTop ?? paddingTop)
+      + measuredLine.bottom
+      - paddingTop
       + getUnderlineGap()
       - editor.scrollTop;
 
