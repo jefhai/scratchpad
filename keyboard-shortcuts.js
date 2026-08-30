@@ -192,7 +192,9 @@
     ).set;
 
     valueSetter.call(editor, value);
-    editor.dispatchEvent(new Event("input", { bubbles: true }));
+    const inputEvent = new Event("input", { bubbles: true });
+    Object.defineProperty(inputEvent, "scratchpadHistoryKind", { value: "indent" });
+    editor.dispatchEvent(inputEvent);
   }
 
   function removeIndentation(line, spacesPerTab) {

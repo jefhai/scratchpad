@@ -5,6 +5,8 @@
   let toolbar = null;
   let metrics = null;
   let actions = null;
+  let toolbarObserver = null;
+  let metricsObserver = null;
 
   function textWidth(element) {
     const style = getComputedStyle(element);
@@ -38,6 +40,11 @@
 
   function updateLayout() {
     frame = 0;
+    if (!toolbar?.isConnected || !metrics?.isConnected || !actions?.isConnected) {
+      connect();
+      return;
+    }
+
     const width = toolbar.getBoundingClientRect().width;
     const intermediate = width >= intermediateMinimum && width <= intermediateMaximum;
     if (!intermediate) {
@@ -45,39 +52,44 @@
       return;
     }
 
-    const naturalToolbarPadding = 24;
-    const naturalToolbarGap = 8;
-    const availableMetricsWidth = width
-      - naturalToolbarPadding
-      - naturalToolbarGap
-      - intrinsicActionsWidth();
-    const compact = textWidth(metrics) > availableMetricsWidth;
-    toolbar.classList.toggle("metrics-compact", compact);
+    const availableMetricsWidth = width - 24 - 8 - intrinsicActionsWidth();
+    toolbar.classList.toggle("metrics-compact", textWidth(metrics) > availableMetricsWidth);
   }
 
   function scheduleUpdate() {
-    if (frame) return;
-    frame = requestAnimationFrame(updateLayout);
+    if (!frame) frame = requestAnimationFrame(updateLayout);
   }
 
-  function initialize() {
-    toolbar = document.querySelector(".editor-toolbar");
-    metrics = document.querySelector(".editor-meta span:last-child");
-    actions = document.querySelector(".editor-actions");
-    if (!toolbar || !metrics || !actions) {
-      requestAnimationFrame(initialize);
+  function disconnectObservers() {
+    toolbarObserver?.disconnect();
+    metricsObserver?.disconnect();
+    toolbarObserver = null;
+    metricsObserver = null;
+  }
+
+  function connect() {
+    const nextToolbar = document.querySelector(".editor-toolbar");
+    const nextMetrics = nextToolbar?.querySelector(".editor-meta span:last-child");
+    const nextActions = nextToolbar?.querySelector(".editor-actions");
+    if (nextToolbar === toolbar && nextMetrics === metrics && nextActions === actions) {
+      scheduleUpdate();
       return;
     }
 
-    new ResizeObserver(scheduleUpdate).observe(toolbar);
-    new MutationObserver(scheduleUpdate).observe(metrics, {
-      characterData: true,
-      childList: true,
-      subtree: true,
-    });
-    window.addEventListener("resize", scheduleUpdate);
+    disconnectObservers();
+    toolbar = nextToolbar;
+    metrics = nextMetrics;
+    actions = nextActions;
+    if (!toolbar || !metrics || !actions) return;
+
+    toolbarObserver = new ResizeObserver(scheduleUpdate);
+    toolbarObserver.observe(toolbar);
+    metricsObserver = new MutationObserver(scheduleUpdate);
+    metricsObserver.observe(metrics, { characterData: true, childList: true, subtree: true });
     scheduleUpdate();
   }
 
-  initialize();
+  new MutationObserver(connect).observe(document.documentElement, { childList: true, subtree: true });
+  window.addEventListener("resize", scheduleUpdate);
+  connect();
 })();

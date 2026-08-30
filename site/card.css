@@ -79,7 +79,7 @@
   position: absolute;
   top: 51px;
   left: 28px;
-  width: 66%;
+  width: 38%;
   height: 6px;
   border-radius: 999px;
   background: #789d23;
@@ -87,6 +87,31 @@
     0 18px 0 rgba(21, 63, 53, 0.38),
     0 36px 0 rgba(21, 63, 53, 0.22),
     0 54px 0 rgba(21, 63, 53, 0.3);
+}
+
+[data-module-card="scratchpad"] .preview-grid {
+  position: absolute;
+  top: 46px;
+  right: 24px;
+  width: 38%;
+  height: 76px;
+  border: 1px solid rgba(21, 63, 53, 0.16);
+  background:
+    linear-gradient(rgba(21, 63, 53, 0.13) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(21, 63, 53, 0.13) 1px, transparent 1px),
+    rgba(234, 241, 236, 0.68);
+  background-size: 100% 19px, 34px 100%, auto;
+}
+
+[data-module-card="scratchpad"] .preview-grid::after {
+  content: "";
+  position: absolute;
+  top: 19px;
+  left: 34px;
+  width: 34px;
+  height: 36px;
+  border: 2px solid #789d23;
+  background: rgba(217, 255, 85, 0.48);
 }
 
 [data-module-card="scratchpad"] .tool-ribbon {

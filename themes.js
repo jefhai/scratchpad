@@ -76,6 +76,12 @@
     "--editor-text",
   ];
 
+  function currentThemeButton() {
+    const current = document.querySelector(".theme-button");
+    if (current) themeButton = current;
+    return themeButton;
+  }
+
   function savedTheme() {
     const value = localStorage.getItem("workbench-theme");
     return themes.some((theme) => theme.id === value) ? value : null;
@@ -95,12 +101,13 @@
 
   function updateButton() {
     const theme = themes.find((item) => item.id === selectedTheme) ?? themes[0];
-    if (!themeButton) return;
-    themeButton.style.setProperty("--theme-button-symbol", themeSymbol(theme));
-    themeButton.dataset.theme = theme.id;
-    themeButton.setAttribute("aria-label", `Choose color theme. Current: ${theme.name}`);
-    themeButton.setAttribute("aria-haspopup", "menu");
-    themeButton.setAttribute("aria-expanded", String(Boolean(menu)));
+    const button = currentThemeButton();
+    if (!button) return;
+    button.style.setProperty("--theme-button-symbol", themeSymbol(theme));
+    button.dataset.theme = theme.id;
+    button.setAttribute("aria-label", `Choose color theme. Current: ${theme.name}`);
+    button.setAttribute("aria-haspopup", "menu");
+    button.setAttribute("aria-expanded", String(Boolean(menu)));
   }
 
   function updateMenuSelection() {
@@ -138,12 +145,13 @@
     menu?.remove();
     menu = null;
     updateButton();
-    themeButton?.focus();
+    currentThemeButton()?.focus();
   }
 
   function positionMenu() {
-    if (!menu || !themeButton) return;
-    const buttonRect = themeButton.getBoundingClientRect();
+    const button = currentThemeButton();
+    if (!menu || !button) return;
+    const buttonRect = button.getBoundingClientRect();
     menu.style.top = `${Math.round(buttonRect.bottom + 8)}px`;
     menu.style.right = `${Math.max(8, Math.round(window.innerWidth - buttonRect.right))}px`;
   }
@@ -210,7 +218,7 @@
 
   function initialize() {
     shell = document.querySelector(".app-shell");
-    themeButton = document.querySelector(".theme-button");
+    themeButton = currentThemeButton();
     if (!shell || !themeButton) {
       requestAnimationFrame(initialize);
       return;
@@ -224,6 +232,8 @@
       if (!shell.classList.contains(`theme-${selectedTheme}`)) applyTheme(selectedTheme, false);
     });
     classObserver.observe(shell, { attributes: true, attributeFilter: ["class"] });
+
+    new MutationObserver(updateButton).observe(shell, { childList: true, subtree: true });
   }
 
   document.addEventListener("click", (event) => {
@@ -243,9 +253,11 @@
       return;
     }
 
-    if (event.target.closest?.(".theme-button")) {
+    const clickedThemeButton = event.target.closest?.(".theme-button");
+    if (clickedThemeButton) {
       event.preventDefault();
       event.stopPropagation();
+      themeButton = clickedThemeButton;
       openMenu();
       return;
     }

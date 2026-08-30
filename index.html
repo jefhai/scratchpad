@@ -3,22 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="A fast Scratchpad for structured data, encoding, cleanup, and developer utilities." />
+    <meta name="description" content="A fast, private browser scratchpad for text transformations and spreadsheet-style calculations." />
     <meta property="og:title" content="Scratchpad" />
-    <meta property="og:description" content="Search and run 48 text transformations from one focused editor." />
+    <meta property="og:description" content="Transform text or calculate across selected spreadsheet cells from one focused workspace." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="./public/og.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Scratchpad" />
-    <meta name="twitter:description" content="Search and run 48 text transformations from one focused editor." />
+    <meta name="twitter:description" content="Transform text or calculate across selected spreadsheet cells from one focused workspace." />
     <meta name="twitter:image" content="./public/og.png" />
     <link rel="icon" type="image/svg+xml" href="./public/favicon.svg" />
     <link rel="stylesheet" href="./app.css" />
+    <link rel="stylesheet" href="./cellpad.css" />
     <link rel="stylesheet" href="./mobile.css?v=20260826-9" />
     <title>Scratchpad</title>
   </head>
   <body>
     <div id="root"></div>
+    <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
     <script src="./commands/registry.js"></script>
     <script src="./commands/format-json.js"></script>
     <script src="./commands/base64-encode.js"></script>
@@ -68,6 +71,21 @@
     <script src="./commands/sha1.js"></script>
     <script src="./commands/sha256.js"></script>
     <script src="./commands/sha512.js"></script>
+    <script src="./commands/cells/registry.js"></script>
+    <script src="./commands/cells/sum.js"></script>
+    <script src="./commands/cells/subtract.js"></script>
+    <script src="./commands/cells/multiply.js"></script>
+    <script src="./commands/cells/divide.js"></script>
+    <script src="./commands/cells/average.js"></script>
+    <script src="./commands/cells/minimum.js"></script>
+    <script src="./commands/cells/maximum.js"></script>
+    <script src="./commands/cells/count.js"></script>
+    <script src="./core/history.js"></script>
+    <script src="./core/documents.js"></script>
+    <script src="./core/workspace.js"></script>
+    <script src="./ui/shared.js"></script>
+    <script src="./ui/text-pad.js"></script>
+    <script src="./ui/cell-pad.js"></script>
     <script src="./editor-defaults.js"></script>
     <script src="./app.js"></script>
     <script src="./themes.js?v=20260826-5"></script>
