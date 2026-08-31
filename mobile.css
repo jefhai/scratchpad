@@ -59,22 +59,39 @@ textarea {
   display: none !important;
 }
 
-.editor-footer > button:nth-of-type(2),
-.editor-footer > button:nth-of-type(3) {
+.editor-footer > .pad-control-button,
+.sheet-statusbar > .pad-control-button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 34px;
   padding: 5px 8px 5px 5px;
   border: 1px solid var(--line);
   border-radius: 7px;
+  background: transparent;
   color: var(--ink);
+  cursor: pointer;
 }
 
-.editor-footer > button:nth-of-type(2):hover,
-.editor-footer > button:nth-of-type(3):hover {
+.editor-footer > .pad-control-button:hover,
+.sheet-statusbar > .pad-control-button:hover {
   background: var(--paper);
 }
 
-.editor-footer > button:nth-of-type(2) .shortcut-label,
-.editor-footer > button:nth-of-type(3) .shortcut-label {
-  display: contents;
+.pad-control-button > kbd {
+  margin-right: 0;
+}
+
+.pad-control-button > .shortcut-label {
+  display: flex;
+  align-items: center;
+  height: 19px;
+  margin: 0 2px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1;
+  transform: translateY(1px);
 }
 
 @media (max-width: 700px) {
@@ -162,10 +179,6 @@ textarea {
   .editor-footer button {
     flex: 0 0 auto;
     min-height: 34px;
-  }
-
-  .editor-footer kbd {
-    margin-right: 0;
   }
 
   .palette-backdrop {
@@ -386,7 +399,7 @@ textarea {
     padding-left: 6px;
   }
 
-  .editor-footer .command-trigger {
+  .pad-control-button {
     padding-right: 5px;
     padding-left: 4px;
   }

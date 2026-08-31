@@ -273,7 +273,7 @@
   }) {
     return h(React.Fragment, null,
       h("button", {
-        className: "command-trigger",
+        className: "command-trigger pad-control-button",
         type: "button",
         onClick: onOpenCommands,
         "aria-keyshortcuts": shortcut === "⌘" ? "Meta+J" : "Control+J",
@@ -282,7 +282,7 @@
         h("span", { className: "shortcut-label" }, "Commands"),
       ),
       h("button", {
-        className: "command-trigger history-trigger",
+        className: "command-trigger history-trigger pad-control-button",
         type: "button",
         onClick: onUndo,
         disabled: !document.canUndo,
@@ -292,7 +292,7 @@
         h("span", { className: "shortcut-label" }, "Undo"),
       ),
       h("button", {
-        className: "command-trigger history-trigger",
+        className: "command-trigger history-trigger pad-control-button",
         type: "button",
         onClick: onRedo,
         disabled: !document.canRedo,
