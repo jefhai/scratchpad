@@ -1,9 +1,29 @@
 (() => {
   const UI = globalThis.ScratchpadUI;
   const Domain = globalThis.ScratchpadDomain;
-  const { useEffect, useMemo, useRef } = React;
+  const { useEffect, useMemo, useRef, useState } = React;
   const h = React.createElement;
   const { columnLabel, coordinate, isNumeric } = Domain;
+
+  const DEFAULT_SETTINGS = {
+    lineHeight: 30,
+    caretSpacing: 1,
+    lineNumberSize: 15,
+  };
+
+  const SETTING_DEFINITIONS = [
+    { label: "Line spacing", key: "lineHeight", min: 24, max: 84, step: 1, unit: "px" },
+    { label: "Caret spacing", key: "caretSpacing", min: 0, max: 8, step: 0.25, unit: "px" },
+    { label: "Line number size", key: "lineNumberSize", min: 11, max: 40, step: 1, unit: "px" },
+  ];
+
+  function loadSettings() {
+    try {
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem("workbench-cell-settings") || "{}") };
+    } catch {
+      return DEFAULT_SETTINGS;
+    }
+  }
 
   function csvEscape(value) {
     const text = String(value ?? "");
@@ -12,6 +32,7 @@
 
   function CellPad({ pad, notify, onChange, onOpenCommands, shortcut }) {
     const viewportRef = useRef(null);
+    const [settings, setSettings] = useState(loadSettings);
     const selected = pad.selectedCoordinates();
     const selectedKeys = useMemo(
       () => new Set(selected.map(({ row, column }) => `${row}:${column}`)),
@@ -20,31 +41,48 @@
     const numericCount = pad.selectedEntries().filter((entry) => isNumeric(entry.value)).length;
 
     useEffect(() => {
+      localStorage.setItem("workbench-cell-settings", JSON.stringify(settings));
+      const shell = document.querySelector(".app-shell");
+      shell?.style.setProperty("--cell-height", `${settings.lineHeight}px`);
+      shell?.style.setProperty("--cell-letter-spacing", `${settings.caretSpacing}px`);
+      shell?.style.setProperty("--cell-header-size", `${settings.lineNumberSize}px`);
+    }, [settings]);
+
+    useEffect(() => {
       const viewport = viewportRef.current;
       if (!viewport) return;
       viewport.scrollTop = pad.scroll.top;
       viewport.scrollLeft = pad.scroll.left;
-      requestAnimationFrame(() => document.querySelector('[data-cell="0:0"]')?.focus());
+      requestAnimationFrame(() => focusInputAtEnd(0, 0));
     }, [pad.id]);
 
     function refresh() { onChange(); }
 
+    function moveCaretToEnd(input) {
+      if (!input) return;
+      input.focus();
+      const end = input.value.length;
+      input.setSelectionRange(end, end);
+    }
+
+    function focusInputAtEnd(row, column) {
+      moveCaretToEnd(document.querySelector(`[data-cell="${row}:${column}"]`));
+    }
+
     function focusCell(row, column) {
       const next = pad.focusCell(row, column);
       refresh();
-      requestAnimationFrame(() => {
-        document.querySelector(`[data-cell="${next.row}:${next.column}"]`)?.focus();
-      });
+      requestAnimationFrame(() => focusInputAtEnd(next.row, next.column));
     }
 
     function undo() {
       if (pad.undo()) refresh();
-      requestAnimationFrame(() => document.querySelector(`[data-cell="${pad.activeCell.row}:${pad.activeCell.column}"]`)?.focus());
+      requestAnimationFrame(() => focusInputAtEnd(pad.activeCell.row, pad.activeCell.column));
     }
 
     function redo() {
       if (pad.redo()) refresh();
-      requestAnimationFrame(() => document.querySelector(`[data-cell="${pad.activeCell.row}:${pad.activeCell.column}"]`)?.focus());
+      requestAnimationFrame(() => focusInputAtEnd(pad.activeCell.row, pad.activeCell.column));
     }
 
     async function copySelection() {
@@ -70,6 +108,13 @@
         event.preventDefault();
         pad.selectAll();
         refresh();
+        return;
+      }
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        const changed = pad.clearSelection();
+        refresh();
+        notify(changed ? "Selection cleared" : "Selection is already empty");
         return;
       }
       if (event.key === "Enter") {
@@ -143,6 +188,7 @@
             pad.selectCell(rowIndex, columnIndex, event.shiftKey);
             refresh();
           },
+          onClick: (event) => moveCaretToEnd(event.currentTarget),
           onChange: (event) => {
             pad.setCell(rowIndex, columnIndex, event.target.value, "typing");
             refresh();
@@ -164,47 +210,47 @@
 
     return h(React.Fragment, null,
       h("div", { className: "sheet-toolbar" },
-        h("div", { className: "sheet-meta" },
+        h("div", { className: "editor-meta" },
           h("span", null, "CELLPAD"),
-          h("span", null, `${pad.columnCount} columns × ${pad.rowCount} rows`),
+          h("span", null,
+            `${pad.columnCount} columns × ${pad.rowCount} rows · ${coordinate(pad.activeCell.row, pad.activeCell.column)} · ${pad.selectionLabel} selected · ${numericCount} numeric`,
+          ),
         ),
-        h("div", { className: "sheet-actions" },
-          h("button", { onClick: () => { pad.addRow(); refresh(); notify("Row added"); } }, "+ Row"),
-          h("button", { onClick: () => { pad.addColumn(); refresh(); notify("Column added"); } }, "+ Column"),
-          pad.selection.kind === "rows" && h("button", { onClick: () => {
-            const count = pad.removeSelectedRows();
-            refresh();
-            notify(`${count} row${count === 1 ? "" : "s"} removed`);
-          } }, "Remove rows"),
-          pad.selection.kind === "columns" && h("button", { onClick: () => {
-            const count = pad.removeSelectedColumns();
-            refresh();
-            notify(`${count} column${count === 1 ? "" : "s"} removed`);
-          } }, "Remove columns"),
-          h("button", { onClick: copySelection }, "Copy"),
-          h("button", { onClick: saveCsv }, "Save CSV"),
-          h("button", { onClick: () => {
-            const changed = pad.clearSelection();
-            refresh();
-            notify(changed ? "Selection cleared" : "Selection is already empty");
-          } }, "Clear selection"),
-          h("button", { onClick: () => { pad.clear(); refresh(); notify("Sheet cleared · Undo is available"); } }, "Clear sheet"),
-          h("button", { className: "theme-button", type: "button", "aria-label": "Choose color theme" }),
+        h("div", { className: "sheet-controls" },
+          h("div", { className: "sheet-actions" },
+            h("button", { onClick: () => { pad.addRow(); refresh(); notify("Row added"); } }, "+ Row"),
+            h("button", { onClick: () => { pad.addColumn(); refresh(); notify("Column added"); } }, "+ Column"),
+            pad.selection.kind === "rows" && h("button", { onClick: () => {
+              const count = pad.removeSelectedRows();
+              refresh();
+              notify(`${count} row${count === 1 ? "" : "s"} removed`);
+            } }, "Remove rows"),
+            pad.selection.kind === "columns" && h("button", { onClick: () => {
+              const count = pad.removeSelectedColumns();
+              refresh();
+              notify(`${count} column${count === 1 ? "" : "s"} removed`);
+            } }, "Remove columns"),
+            h("button", { onClick: copySelection }, "Copy"),
+            h("button", { onClick: saveCsv }, "Save CSV"),
+            h("button", { onClick: () => {
+              const changed = pad.clearSelection();
+              refresh();
+              notify(changed ? "Selection cleared" : "Selection is already empty");
+            } }, "Clear selection"),
+            h("button", { onClick: () => { pad.clear(); refresh(); notify("Sheet cleared · Undo is available"); } }, "Clear sheet"),
+          ),
+          h("div", { className: "sheet-fixed-actions" },
+            h("button", { className: "theme-button", type: "button", "aria-label": "Choose color theme" }),
+            h(UI.DisplaySettings, {
+              definitions: SETTING_DEFINITIONS,
+              editorKind: "cells",
+              id: "cell-display-settings",
+              settings,
+              onChange: (key, value) => setSettings((current) => ({ ...current, [key]: value })),
+              onReset: () => setSettings(DEFAULT_SETTINGS),
+            }),
+          ),
         ),
-      ),
-      h("div", { className: "formula-bar" },
-        h("span", { className: "cell-address" }, coordinate(pad.activeCell.row, pad.activeCell.column)),
-        h("span", { className: "formula-symbol", "aria-hidden": "true" }, "fx"),
-        h("input", {
-          className: "formula-input",
-          value: pad.activeValue,
-          onChange: (event) => {
-            pad.setCell(pad.activeCell.row, pad.activeCell.column, event.target.value, "typing");
-            refresh();
-          },
-          "aria-label": `Edit ${coordinate(pad.activeCell.row, pad.activeCell.column)}`,
-          placeholder: "Enter text or a number",
-        }),
       ),
       h("section", {
         className: "sheet-viewport",
@@ -225,9 +271,6 @@
           h("kbd", null, shortcut), h("kbd", null, "J"), " Commands",
         ),
         h(UI.HistoryControls, { document: pad, onUndo: undo, onRedo: redo, shortcut }),
-        h("span", { className: "sheet-selection-summary" },
-          `${pad.selectionLabel} selected · ${numericCount} numeric · ${pad.columnCount} × ${pad.rowCount} sheet`,
-        ),
         pad.result && h("div", { className: "sheet-result" },
           h("span", null, pad.result.name),
           h("strong", null, pad.result.value),

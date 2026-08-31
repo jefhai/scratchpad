@@ -137,17 +137,6 @@
           if (!event.repeat) redo();
           return;
         }
-        if (
-          !paletteOpen
-          && event.key === "Delete"
-          && workspace.active.kind === "sheet"
-          && document.activeElement?.classList.contains("cell-input")
-        ) {
-          event.preventDefault();
-          const changed = workspace.active.clearSelection();
-          refresh();
-          notify(changed ? "Selection cleared" : "Selection is already empty");
-        }
       }
 
       window.addEventListener("keydown", handleKeyDown);

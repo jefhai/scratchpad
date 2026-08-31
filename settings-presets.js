@@ -45,8 +45,11 @@
 
     presetRow.querySelectorAll("button").forEach((button) => {
       const preset = presets[Number(button.dataset.presetIndex)];
-      const active = preset && Object.entries(preset.values).every(
-        ([name, value]) => Number(getSettingInput(name)?.value) === value,
+      const availableValues = preset && Object.entries(preset.values).filter(
+        ([name]) => getSettingInput(name),
+      );
+      const active = availableValues?.length > 0 && availableValues.every(
+        ([name, value]) => Number(getSettingInput(name).value) === value,
       );
       button.classList.toggle("active", active);
       button.setAttribute("aria-pressed", String(active));

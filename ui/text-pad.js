@@ -11,6 +11,14 @@
     underlineGap: 5,
   };
 
+  const SETTING_DEFINITIONS = [
+    { label: "Line spacing", key: "lineHeight", min: 24, max: 84, step: 1, unit: "px" },
+    { label: "Caret spacing", key: "caretSpacing", min: 0, max: 8, step: 0.25, unit: "px" },
+    { label: "Tab spacing size", key: "tabSize", min: 1, max: 16, step: 1, unit: " spaces" },
+    { label: "Line number size", key: "lineNumberSize", min: 11, max: 40, step: 1, unit: "px" },
+    { label: "Underline gap", key: "underlineGap", min: 0, max: 12, step: 1, unit: "px" },
+  ];
+
   function loadSettings() {
     try {
       return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem("workbench-editor-settings") || "{}") };
@@ -23,7 +31,6 @@
     const editorRef = useRef(null);
     const lineNumbersRef = useRef(null);
     const fileInputRef = useRef(null);
-    const [settingsOpen, setSettingsOpen] = useState(false);
     const [settings, setSettings] = useState(loadSettings);
     const lines = Math.max(1, pad.text.split(/\r?\n/).length);
     const focusPosition = pad.selection.direction === "backward"
@@ -107,26 +114,6 @@
       event.target.value = "";
     }
 
-    function setting(label, key, min, max, step, unit) {
-      return h("label", { className: "setting-row", key },
-        h("span", null,
-          h("strong", null, label),
-          h("small", null, `${settings[key]}${unit}`),
-        ),
-        h("input", {
-          type: "range",
-          min,
-          max,
-          step,
-          value: settings[key],
-          onChange: (event) => setSettings((current) => ({
-            ...current,
-            [key]: Number(event.target.value),
-          })),
-        }),
-      );
-    }
-
     const stats = pad.stats;
     return h(React.Fragment, null,
       h("div", { className: "editor-toolbar" },
@@ -157,31 +144,14 @@
             },
           }, "Clear"),
           h("button", { className: "theme-button", type: "button", "aria-label": "Choose color theme" }),
-          h("div", { className: "settings-wrap" },
-            h("button", {
-              className: "settings-button",
-              onClick: () => setSettingsOpen((open) => !open),
-              "aria-expanded": settingsOpen,
-              "aria-controls": "editor-settings",
-              "aria-label": "Editor settings",
-            }, "⚙"),
-            settingsOpen && h("section", {
-              className: "settings-menu",
-              id: "editor-settings",
-              "aria-label": "Editor settings",
-            },
-              h("div", { className: "settings-heading" },
-                h("div", null, h("span", null, "EDITOR"), h("strong", null, "Display settings")),
-                h("button", { onClick: () => setSettingsOpen(false), "aria-label": "Close settings" }, "×"),
-              ),
-              setting("Line spacing", "lineHeight", 24, 84, 1, "px"),
-              setting("Caret spacing", "caretSpacing", 0, 8, 0.25, "px"),
-              setting("Tab spacing size", "tabSize", 1, 16, 1, " spaces"),
-              setting("Line number size", "lineNumberSize", 11, 40, 1, "px"),
-              setting("Underline gap", "underlineGap", 0, 12, 1, "px"),
-              h("button", { className: "reset-settings", onClick: () => setSettings(DEFAULT_SETTINGS) }, "Reset defaults"),
-            ),
-          ),
+          h(UI.DisplaySettings, {
+            definitions: SETTING_DEFINITIONS,
+            editorKind: "text",
+            id: "text-display-settings",
+            settings,
+            onChange: (key, value) => setSettings((current) => ({ ...current, [key]: value })),
+            onReset: () => setSettings(DEFAULT_SETTINGS),
+          }),
         ),
       ),
       h("div", { className: "editor-wrap" },

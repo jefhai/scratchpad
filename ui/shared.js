@@ -122,6 +122,60 @@
     );
   }
 
+  function DisplaySettings({
+    definitions,
+    editorKind,
+    id,
+    onChange,
+    onReset,
+    settings,
+  }) {
+    const [open, setOpen] = useState(false);
+
+    return h("div", { className: "settings-wrap" },
+      h("button", {
+        className: "settings-button",
+        type: "button",
+        onClick: () => setOpen((current) => !current),
+        "aria-expanded": open,
+        "aria-controls": id,
+        "aria-label": "Display settings",
+      }, "⚙"),
+      open && h("section", {
+        className: "settings-menu",
+        id,
+        "data-editor-kind": editorKind,
+        "aria-label": "Display settings",
+      },
+        h("div", { className: "settings-heading" },
+          h("div", null,
+            h("span", null, "EDITOR"),
+            h("strong", null, "Display settings"),
+          ),
+          h("button", { type: "button", onClick: () => setOpen(false), "aria-label": "Close settings" }, "×"),
+        ),
+        definitions.map(({ key, label, max, min, step, unit }) => h("label", {
+          className: "setting-row",
+          key,
+        },
+          h("span", null,
+            h("strong", null, label),
+            h("small", null, `${settings[key]}${unit}`),
+          ),
+          h("input", {
+            type: "range",
+            min,
+            max,
+            step,
+            value: settings[key],
+            onChange: (event) => onChange(key, Number(event.target.value)),
+          }),
+        )),
+        h("button", { className: "reset-settings", type: "button", onClick: onReset }, "Reset defaults"),
+      ),
+    );
+  }
+
   function CommandPalette({ commands, meta, onClose, onRun, query, setQuery, title, working }) {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const searchRef = useRef(null);
@@ -223,5 +277,5 @@
     );
   }
 
-  Object.assign(UI, { CommandPalette, HistoryControls, TabBar });
+  Object.assign(UI, { CommandPalette, DisplaySettings, HistoryControls, TabBar });
 })();

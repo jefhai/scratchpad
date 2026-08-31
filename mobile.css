@@ -119,7 +119,9 @@ textarea {
   }
 
   .editor-actions .theme-button,
-  .editor-actions .settings-button {
+  .editor-actions .settings-button,
+  .sheet-fixed-actions .theme-button,
+  .sheet-fixed-actions .settings-button {
     width: 38px;
     height: 38px;
   }
@@ -461,7 +463,7 @@ textarea {
   gap: 5px;
 }
 
-.editor-actions .display-size-presets button {
+.settings-menu .display-size-presets button {
   min-width: 0;
   padding: 7px 5px;
   border: 1px solid var(--line);
@@ -472,14 +474,14 @@ textarea {
   cursor: pointer;
 }
 
-.editor-actions .display-size-presets button:hover,
-.editor-actions .display-size-presets button:focus-visible {
+.settings-menu .display-size-presets button:hover,
+.settings-menu .display-size-presets button:focus-visible {
   outline: 0;
   background: var(--panel);
   color: var(--ink);
 }
 
-.editor-actions .display-size-presets button.active {
+.settings-menu .display-size-presets button.active {
   border-color: var(--deep);
   background: var(--deep);
   color: var(--paper);

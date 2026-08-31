@@ -286,7 +286,7 @@
   }
 
   function ensureSetting() {
-    const menu = document.querySelector(".settings-menu");
+    const menu = document.querySelector('.settings-menu[data-editor-kind="text"]');
     if (!menu || menu.querySelector("#indent-mode-setting")) {
       updateSetting();
       return;
@@ -361,7 +361,7 @@
   document.addEventListener(
     "click",
     (event) => {
-      if (!event.target.closest?.(".reset-settings")) return;
+      if (!event.target.closest?.('.settings-menu[data-editor-kind="text"] .reset-settings')) return;
       setIndentMode(false);
       window.setTimeout(resetTabSize);
     },

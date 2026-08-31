@@ -89,7 +89,7 @@
 }
 
 .editor-panel.cell-mode {
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
 }
 
 .sheet-toolbar {
@@ -100,30 +100,26 @@
   justify-content: space-between;
   gap: 18px;
   padding: 9px 16px 9px 24px;
-  overflow: hidden;
+  overflow: visible;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
 }
 
-.sheet-meta {
-  flex: 0 0 auto;
-  display: grid;
-  gap: 3px;
-  color: var(--muted);
-  font: 650 9px/1.2 var(--font-geist-mono), monospace;
-  letter-spacing: .11em;
-  text-transform: uppercase;
-}
-
-.sheet-meta span:first-child {
-  color: var(--ink);
-  font-size: 11px;
+.sheet-controls {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
 }
 
 .sheet-actions {
   min-width: 0;
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 5px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -134,6 +130,8 @@
 }
 
 .sheet-actions button,
+.sheet-fixed-actions > .theme-button,
+.sheet-fixed-actions > .settings-wrap > .settings-button,
 .sheet-result button {
   min-height: 34px;
   flex: 0 0 auto;
@@ -151,6 +149,10 @@
 
 .sheet-actions button:hover,
 .sheet-actions button:focus-visible,
+.sheet-fixed-actions > .theme-button:hover,
+.sheet-fixed-actions > .theme-button:focus-visible,
+.sheet-fixed-actions > .settings-wrap > .settings-button:hover,
+.sheet-fixed-actions > .settings-wrap > .settings-button:focus-visible,
 .sheet-result button:hover,
 .sheet-result button:focus-visible {
   border-color: var(--line);
@@ -159,17 +161,29 @@
   color: var(--ink);
 }
 
-.sheet-actions .theme-button {
+.sheet-fixed-actions {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sheet-fixed-actions .theme-button,
+.sheet-fixed-actions .settings-button {
   position: relative;
   width: 34px;
   height: 34px;
   padding: 0;
   border-color: var(--line);
+}
+
+.sheet-fixed-actions .theme-button {
   font-size: 0;
   line-height: 0;
 }
 
-.sheet-actions .theme-button::before {
+.sheet-fixed-actions .theme-button::before {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -180,41 +194,24 @@
   content: "";
 }
 
-.formula-bar {
-  min-width: 0;
-  min-height: 44px;
-  display: grid;
-  grid-template-columns: 82px 34px minmax(0, 1fr);
-  align-items: stretch;
-  border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--paper) 68%, var(--panel));
+.sheet-fixed-actions .settings-heading button {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--line);
+  font-size: 17px;
 }
 
-.cell-address,
-.formula-symbol {
-  display: grid;
-  place-items: center;
-  border-right: 1px solid var(--line);
+.sheet-fixed-actions .reset-settings {
+  justify-self: start;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
   color: var(--muted);
-  font: 700 11px var(--font-geist-mono), monospace;
 }
 
-.cell-address {
+.sheet-fixed-actions .reset-settings:hover,
+.sheet-fixed-actions .reset-settings:focus-visible {
   color: var(--ink);
-}
-
-.formula-input {
-  min-width: 0;
-  padding: 0 14px;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--ink);
-  font: 500 13px var(--font-geist-mono), monospace;
-}
-
-.formula-input:focus {
-  box-shadow: inset 0 -2px var(--deep);
 }
 
 .sheet-viewport {
@@ -249,7 +246,7 @@
   min-width: 100%;
   display: grid;
   grid-template-columns: var(--row-header-width, 54px) repeat(var(--column-count), var(--cell-width, 140px));
-  grid-auto-rows: var(--cell-height, 36px);
+  grid-auto-rows: var(--cell-height, 30px);
 }
 
 .corner,
@@ -264,7 +261,7 @@
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--paper) 68%, var(--panel));
   color: var(--muted);
-  font: 700 10px var(--font-geist-mono), monospace;
+  font: 700 var(--cell-header-size, 15px) var(--font-geist-mono), monospace;
   cursor: pointer;
   user-select: none;
 }
@@ -316,6 +313,7 @@
   background: transparent;
   color: var(--ink);
   font: 500 12px var(--font-geist-mono), monospace;
+  letter-spacing: var(--cell-letter-spacing, 1px);
 }
 
 .cell-input.numeric {
@@ -328,12 +326,20 @@
   min-height: 54px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 18px;
+  gap: 18px;
+  padding: 12px 32px;
   border-top: 1px solid var(--line);
   background: var(--panel);
   color: var(--muted);
   font-size: 11px;
+}
+
+@media (max-width: 700px) {
+  .sheet-statusbar {
+    min-height: 52px;
+    gap: 8px;
+    padding: 8px 12px max(8px, env(safe-area-inset-bottom));
+  }
 }
 
 .sheet-statusbar > button {
@@ -356,13 +362,6 @@
 .sheet-statusbar > button:disabled {
   opacity: .4;
   cursor: default;
-}
-
-.sheet-selection-summary {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .sheet-result {
@@ -396,21 +395,8 @@
     padding: 8px;
   }
 
-  .sheet-meta {
-    padding: 5px 0 0 5px;
-  }
-
-  .formula-bar {
-    grid-template-columns: 65px 30px minmax(0, 1fr);
-  }
-
   .sheet-statusbar {
     flex-wrap: wrap;
-  }
-
-  .sheet-selection-summary {
-    width: 100%;
-    order: 5;
   }
 
   .sheet-result {
@@ -428,11 +414,40 @@
     --row-header-width: 46px;
   }
 
-  .sheet-meta span:last-child {
-    display: none;
-  }
-
   .sheet-statusbar .shortcut-label {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .sheet-toolbar {
+    min-height: 82px;
+    flex-wrap: wrap;
+    align-content: center;
+    gap: 4px;
+    padding: 7px 8px 6px;
+    overflow: visible;
+  }
+
+  .sheet-controls {
+    order: 1;
+    flex: 0 0 100%;
+    width: 100%;
+  }
+}
+
+@media (max-width: 450px) {
+  .sheet-statusbar {
+    gap: 6px;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .sheet-statusbar {
+    gap: 2px;
+    padding-right: 6px;
+    padding-left: 6px;
   }
 }
