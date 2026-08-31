@@ -264,18 +264,45 @@
     );
   }
 
-  function HistoryControls({ document, onUndo, onRedo, shortcut }) {
+  function PadControls({
+    document,
+    onOpenCommands,
+    onRedo,
+    onUndo,
+    shortcut,
+  }) {
     return h(React.Fragment, null,
-      h("button", { className: "command-trigger history-trigger", onClick: onUndo, disabled: !document.canUndo },
+      h("button", {
+        className: "command-trigger",
+        type: "button",
+        onClick: onOpenCommands,
+        "aria-keyshortcuts": shortcut === "⌘" ? "Meta+J" : "Control+J",
+      },
+        h("kbd", null, shortcut), h("kbd", null, "J"),
+        h("span", { className: "shortcut-label" }, "Commands"),
+      ),
+      h("button", {
+        className: "command-trigger history-trigger",
+        type: "button",
+        onClick: onUndo,
+        disabled: !document.canUndo,
+        "aria-keyshortcuts": shortcut === "⌘" ? "Meta+Z" : "Control+Z",
+      },
         h("kbd", null, shortcut), h("kbd", null, "Z"),
         h("span", { className: "shortcut-label" }, "Undo"),
       ),
-      h("button", { className: "command-trigger history-trigger", onClick: onRedo, disabled: !document.canRedo },
+      h("button", {
+        className: "command-trigger history-trigger",
+        type: "button",
+        onClick: onRedo,
+        disabled: !document.canRedo,
+        "aria-keyshortcuts": shortcut === "⌘" ? "Meta+Y" : "Control+Y",
+      },
         h("kbd", null, shortcut), h("kbd", null, "Y"),
         h("span", { className: "shortcut-label" }, "Redo"),
       ),
     );
   }
 
-  Object.assign(UI, { CommandPalette, DisplaySettings, HistoryControls, TabBar });
+  Object.assign(UI, { CommandPalette, DisplaySettings, PadControls, TabBar });
 })();

@@ -188,12 +188,13 @@
         }),
       ),
       h("footer", { className: "editor-footer" },
-        h("button", {
-          className: "command-trigger",
-          onClick: onOpenCommands,
-          "aria-keyshortcuts": shortcut === "⌘" ? "Meta+J" : "Control+J",
-        }, h("kbd", null, shortcut), h("kbd", null, "J"), " Commands"),
-        h(UI.HistoryControls, { document: pad, onUndo: undo, onRedo: redo, shortcut }),
+        h(UI.PadControls, {
+          document: pad,
+          onOpenCommands,
+          onUndo: undo,
+          onRedo: redo,
+          shortcut,
+        }),
         h("span", { className: "footer-prompt" }, "Select a portion to transform only that text."),
       ),
     );
