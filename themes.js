@@ -78,13 +78,17 @@
 
   function currentThemeButton() {
     const current = document.querySelector(".theme-button");
-    if (current) themeButton = current;
+    themeButton = current;
     return themeButton;
   }
 
   function savedTheme() {
-    const value = localStorage.getItem("workbench-theme");
-    return themes.some((theme) => theme.id === value) ? value : null;
+    try {
+      const value = localStorage.getItem("workbench-theme");
+      return themes.some((theme) => theme.id === value) ? value : null;
+    } catch {
+      return null;
+    }
   }
 
   function themeSymbol(theme) {
@@ -108,6 +112,8 @@
     button.setAttribute("aria-label", `Choose color theme. Current: ${theme.name}`);
     button.setAttribute("aria-haspopup", "menu");
     button.setAttribute("aria-expanded", String(Boolean(menu)));
+    if (menu) button.setAttribute("aria-controls", menu.id);
+    else button.removeAttribute("aria-controls");
   }
 
   function updateMenuSelection() {
@@ -115,6 +121,7 @@
       const active = option.dataset.theme === selectedTheme;
       option.classList.toggle("active", active);
       option.setAttribute("aria-checked", String(active));
+      option.tabIndex = active ? 0 : -1;
     });
   }
 
@@ -135,32 +142,54 @@
     shell?.classList.remove(...themeClasses, "dark");
     shell?.classList.add(`theme-${theme.id}`);
     if (theme.dark) shell?.classList.add("dark");
-    if (persist) localStorage.setItem("workbench-theme", theme.id);
+    if (persist) {
+      try {
+        localStorage.setItem("workbench-theme", theme.id);
+      } catch {
+        // A theme can still be used for this session when storage is blocked.
+      }
+    }
     syncMenuTheme();
     updateButton();
     updateMenuSelection();
   }
 
-  function closeMenu() {
+  function closeMenu(restoreFocus = false) {
+    if (!menu) return;
     menu?.remove();
     menu = null;
     updateButton();
-    currentThemeButton()?.focus();
+    if (restoreFocus) currentThemeButton()?.focus({ preventScroll: true });
   }
 
   function positionMenu() {
     const button = currentThemeButton();
     if (!menu || !button) return;
     const buttonRect = button.getBoundingClientRect();
-    menu.style.top = `${Math.round(buttonRect.bottom + 8)}px`;
-    menu.style.right = `${Math.max(8, Math.round(window.innerWidth - buttonRect.right))}px`;
+    const viewport = window.visualViewport;
+    const width = viewport?.width ?? window.innerWidth;
+    const height = viewport?.height ?? window.innerHeight;
+    const left = viewport?.offsetLeft ?? 0;
+    const top = viewport?.offsetTop ?? 0;
+    const gap = 8;
+    const menuWidth = Math.min(width <= 480 ? width - gap * 2 : 320, width - gap * 2);
+    menu.style.width = `${Math.max(0, menuWidth)}px`;
+    menu.style.maxHeight = `${Math.max(0, height - gap * 2)}px`;
+    const menuHeight = menu.getBoundingClientRect().height;
+    menu.style.top = `${Math.max(top + gap, Math.min(buttonRect.bottom + gap, top + height - menuHeight - gap))}px`;
+    menu.style.left = `${Math.max(left + gap, Math.min(buttonRect.right - menuWidth, left + width - menuWidth - gap))}px`;
+    menu.style.right = "auto";
   }
 
   function openMenu() {
     if (menu) {
-      closeMenu();
+      closeMenu(true);
       return;
     }
+
+    document.dispatchEvent(new CustomEvent("scratchpad:popover-open", {
+      detail: { id: "color-theme-menu" },
+    }));
 
     menu = document.createElement("section");
     menu.id = "color-theme-menu";
@@ -213,7 +242,9 @@
     positionMenu();
     updateMenuSelection();
     updateButton();
-    menu.querySelector('.theme-option[aria-checked="true"]')?.focus();
+    const selected = menu.querySelector('.theme-option[aria-checked="true"]');
+    selected?.focus({ preventScroll: true });
+    selected?.scrollIntoView({ block: "nearest" });
   }
 
   function initialize() {
@@ -233,14 +264,25 @@
     });
     classObserver.observe(shell, { attributes: true, attributeFilter: ["class"] });
 
-    new MutationObserver(updateButton).observe(shell, { childList: true, subtree: true });
+    new MutationObserver((records) => {
+      const buttonChanged = records.some((record) => (
+        [...record.addedNodes, ...record.removedNodes].some((node) => (
+          node.nodeType === Node.ELEMENT_NODE
+          && (node.matches(".theme-button") || node.querySelector(".theme-button"))
+        ))
+      ));
+      if (buttonChanged) {
+        closeMenu();
+        updateButton();
+      }
+    }).observe(shell, { childList: true, subtree: true });
   }
 
   document.addEventListener("click", (event) => {
     if (event.target.closest?.(".theme-menu-close")) {
       event.preventDefault();
       event.stopPropagation();
-      closeMenu();
+      closeMenu(true);
       return;
     }
 
@@ -249,7 +291,7 @@
       event.preventDefault();
       event.stopPropagation();
       applyTheme(option.dataset.theme);
-      closeMenu();
+      closeMenu(true);
       return;
     }
 
@@ -262,18 +304,62 @@
       return;
     }
 
-    if (menu && !event.target.closest?.(".theme-menu")) closeMenu();
   }, true);
+
+  document.addEventListener("pointerdown", (event) => {
+    if (menu && !event.target.closest?.(".theme-menu, .theme-button")) closeMenu();
+  }, true);
+
+  document.addEventListener("focusin", (event) => {
+    if (menu && !event.target.closest?.(".theme-menu, .theme-button")) closeMenu();
+  });
+
+  document.addEventListener("scratchpad:popover-open", (event) => {
+    if (event.detail?.id !== "color-theme-menu") closeMenu();
+  });
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && menu) {
       event.preventDefault();
       event.stopPropagation();
-      closeMenu();
+      closeMenu(true);
+      return;
+    }
+
+    if (!menu || !menu.contains(event.target)) return;
+    if (event.key === "Tab") {
+      // Resume the page's normal tab order from the menu's trigger.
+      closeMenu(true);
+      return;
+    }
+
+    const options = Array.from(menu.querySelectorAll(".theme-option"));
+    const currentIndex = options.indexOf(document.activeElement);
+    let nextIndex = null;
+    if (event.key === "ArrowDown") nextIndex = (currentIndex + 1) % options.length;
+    if (event.key === "ArrowUp") nextIndex = currentIndex < 0
+      ? options.length - 1
+      : (currentIndex - 1 + options.length) % options.length;
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = options.length - 1;
+    if (nextIndex !== null) {
+      event.preventDefault();
+      event.stopPropagation();
+      options.forEach((option, index) => { option.tabIndex = index === nextIndex ? 0 : -1; });
+      options[nextIndex]?.focus({ preventScroll: true });
+      options[nextIndex]?.scrollIntoView({ block: "nearest" });
     }
   }, true);
 
   window.addEventListener("resize", positionMenu);
   window.addEventListener("scroll", positionMenu, true);
+  window.visualViewport?.addEventListener("resize", positionMenu);
+  window.visualViewport?.addEventListener("scroll", positionMenu);
+  window.addEventListener("storage", (event) => {
+    if (event.key === "workbench-theme") {
+      const theme = savedTheme();
+      if (theme) applyTheme(theme, false);
+    }
+  });
   initialize();
 })();

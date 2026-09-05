@@ -2,6 +2,8 @@
   const commands = [];
 
   function register(command) {
+    // A timed-out script may still execute after it has been removed from the DOM.
+    if (globalThis.document?.currentScript?.dataset?.scratchpadLoadExpired === "true") return;
     if (!command?.id || typeof command.run !== "function") {
       throw new Error("Invalid Scratchpad command definition");
     }
@@ -126,6 +128,7 @@
 
   globalThis.ScratchpadCommands = Object.freeze({
     register,
+    get: (id) => commands.find((command) => command.id === id),
     all: () => commands.slice(),
   });
 

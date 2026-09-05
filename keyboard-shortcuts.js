@@ -4,7 +4,16 @@
   const underlineMirror = document.createElement("div");
   const underlineMarker = document.createElement("span");
   const heldHistoryShortcuts = new Set();
+  const editorLines = new WeakMap();
+  let indentMode = "spaces";
   let underlineFrame = 0;
+  let settingFrame = 0;
+
+  try {
+    indentMode = localStorage.getItem(indentModeKey) === "tabs" ? "tabs" : "spaces";
+  } catch {
+    // The editor still works when browser storage is unavailable.
+  }
 
   Object.assign(underlineMirror.style, {
     position: "fixed",
@@ -18,6 +27,7 @@
     overflow: "visible",
   });
   underlineMirror.setAttribute("aria-hidden", "true");
+  underlineMirror.append(underlineMarker);
   document.body.append(underlineMirror);
 
   function historyShortcutKey(event) {
@@ -57,7 +67,7 @@
 
   function getSpacesPerTab(editor) {
     const configuredSize = Number.parseInt(getComputedStyle(editor).tabSize, 10);
-    return Number.isFinite(configuredSize) ? configuredSize : 2;
+    return Number.isFinite(configuredSize) ? Math.max(1, Math.min(16, configuredSize)) : 2;
   }
 
   function resetTabSize() {
@@ -76,19 +86,12 @@
     input.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
-  function getUnderlineGap() {
-    try {
-      const settings = JSON.parse(
-        localStorage.getItem("workbench-editor-settings") || "{}",
-      );
-      return Number.isFinite(settings.underlineGap) ? settings.underlineGap : 5;
-    } catch {
-      return 5;
-    }
+  function getUnderlineGap(style) {
+    const gap = Number.parseFloat(style.getPropertyValue("--underline-gap"));
+    return Number.isFinite(gap) ? gap : 5;
   }
 
-  function measureUnderlineLine(editor, line) {
-    const style = getComputedStyle(editor);
+  function measureUnderlineLine(editor, line, style) {
     Object.assign(underlineMirror.style, {
       width: `${editor.clientWidth}px`,
       boxSizing: "border-box",
@@ -104,7 +107,6 @@
       direction: style.direction,
     });
     underlineMarker.textContent = line || "\u200b";
-    underlineMirror.replaceChildren(underlineMarker);
 
     const mirrorRect = underlineMirror.getBoundingClientRect();
     const markerRect = underlineMarker.getBoundingClientRect();
@@ -132,20 +134,40 @@
     const focusPosition = editor.selectionDirection === "backward"
       ? editor.selectionStart
       : editor.selectionEnd;
-    const lineIndex = editor.value.slice(0, focusPosition).split(/\r?\n/).length - 1;
-    const line = editor.value.split(/\r?\n/)[lineIndex] || "";
-    let activeLineNumber = null;
-    editor.parentElement.querySelectorAll(".line-numbers span").forEach(
-      (lineNumber, index) => {
-        const isActive = index === lineIndex;
-        lineNumber.classList.toggle("active", isActive);
-        if (isActive) activeLineNumber = lineNumber;
-      },
-    );
+    let lines = editorLines.get(editor);
+    if (!lines || lines.value !== editor.value) {
+      const starts = [0];
+      for (let index = editor.value.indexOf("\n"); index !== -1; index = editor.value.indexOf("\n", index + 1)) {
+        starts.push(index + 1);
+      }
+      lines = { value: editor.value, starts, active: lines?.active };
+      editorLines.set(editor, lines);
+    }
+    let low = 0;
+    let high = lines.starts.length;
+    while (low + 1 < high) {
+      const middle = Math.floor((low + high) / 2);
+      if (lines.starts[middle] <= focusPosition) low = middle;
+      else high = middle;
+    }
+    const lineIndex = low;
+    const lineEnd = lines.starts[lineIndex + 1] === undefined
+      ? editor.value.length
+      : lines.starts[lineIndex + 1] - 1;
+    const line = editor.value.slice(lines.starts[lineIndex], lineEnd).replace(/\r$/, "");
+    const numbers = editor.parentElement.querySelector(".line-numbers > div");
+    const activeLineNumber = numbers?.children[lineIndex];
+    if (lines.active !== activeLineNumber) {
+      lines.active?.classList.remove("active");
+      // React can set an active line before this selection event is processed.
+      numbers?.querySelector(".active")?.classList.remove("active");
+      lines.active = activeLineNumber;
+    }
+    activeLineNumber?.classList.add("active");
     const style = getComputedStyle(editor);
     const paddingTop = Number.parseFloat(style.paddingTop) || 0;
     const paddingLeft = Number.parseFloat(style.paddingLeft) || 0;
-    const measuredLine = measureUnderlineLine(editor, line);
+    const measuredLine = measureUnderlineLine(editor, line, style);
     const underlineLeft = 8;
     const textEnd = measuredLine.width > 0
       ? editor.offsetLeft + paddingLeft - editor.scrollLeft + measuredLine.width
@@ -153,7 +175,7 @@
     const underlineTop = (activeLineNumber?.offsetTop ?? paddingTop)
       + measuredLine.bottom
       - paddingTop
-      + getUnderlineGap()
+      + getUnderlineGap(style)
       - editor.scrollTop;
 
     underline.style.left = `${underlineLeft}px`;
@@ -173,7 +195,7 @@
   }
 
   function insertsTabCharacters() {
-    return localStorage.getItem(indentModeKey) === "tabs";
+    return indentMode === "tabs";
   }
 
   function getIndentation(editor) {
@@ -181,7 +203,12 @@
   }
 
   function setIndentMode(useTabs) {
-    localStorage.setItem(indentModeKey, useTabs ? "tabs" : "spaces");
+    indentMode = useTabs ? "tabs" : "spaces";
+    try {
+      localStorage.setItem(indentModeKey, indentMode);
+    } catch {
+      // Keep the current session's setting even without persistent storage.
+    }
     updateSetting();
   }
 
@@ -204,6 +231,7 @@
 
   function restoreSelection(editor, start, end = start) {
     window.setTimeout(() => {
+      if (!editor.isConnected) return;
       editor.focus();
       editor.setSelectionRange(start, end);
       editor.dispatchEvent(new Event("select", { bubbles: true }));
@@ -223,7 +251,7 @@
       return;
     }
 
-    const lineStart = value.lastIndexOf("\n", Math.max(0, selectionStart - 1)) + 1;
+    const lineStart = selectionStart === 0 ? 0 : value.lastIndexOf("\n", selectionStart - 1) + 1;
     const lineEnd = value.indexOf("\n", selectionStart);
     const resolvedLineEnd = lineEnd === -1 ? value.length : lineEnd;
     const line = value.slice(lineStart, resolvedLineEnd);
@@ -242,7 +270,7 @@
 
   function transformSelectedLines(editor, shouldDetab) {
     const { selectionStart, selectionEnd, value } = editor;
-    const blockStart = value.lastIndexOf("\n", Math.max(0, selectionStart - 1)) + 1;
+    const blockStart = selectionStart === 0 ? 0 : value.lastIndexOf("\n", selectionStart - 1) + 1;
     const finalSelectedPosition =
       value[selectionEnd - 1] === "\n"
         ? Math.max(selectionStart, selectionEnd - 2)
@@ -314,6 +342,14 @@
     updateSetting();
   }
 
+  function scheduleSettingUpdate() {
+    if (settingFrame) return;
+    settingFrame = requestAnimationFrame(() => {
+      settingFrame = 0;
+      ensureSetting();
+    });
+  }
+
   document.addEventListener(
     "keydown",
     (event) => {
@@ -349,6 +385,11 @@
     },
   );
 
+  document.addEventListener("focusin", (event) => {
+    const editor = event.target.closest?.(editorSelector);
+    if (editor) scheduleUnderlineUpdate(editor);
+  });
+
   document.addEventListener(
     "scroll",
     (event) => {
@@ -368,9 +409,36 @@
     true,
   );
 
-  new MutationObserver(ensureSetting).observe(document.body, {
-    attributes: true,
+  document.addEventListener("input", (event) => {
+    if (event.target.closest?.('.settings-menu[data-editor-kind="text"]')) {
+      scheduleSettingUpdate();
+    }
+    const editor = event.target.closest?.(editorSelector);
+    if (editor) scheduleUnderlineUpdate(editor);
+  });
+
+  window.addEventListener("storage", (event) => {
+    if (event.key !== indentModeKey && event.key !== null) return;
+    indentMode = event.newValue === "tabs" ? "tabs" : "spaces";
+    scheduleSettingUpdate();
+  });
+
+  document.addEventListener("scratchpad:display-settings-changed", () => {
+    scheduleSettingUpdate();
+    const editor = document.activeElement?.closest?.(editorSelector);
+    if (editor) scheduleUnderlineUpdate(editor);
+  });
+
+  new MutationObserver((records) => {
+    const textMenu = '.settings-menu[data-editor-kind="text"]';
+    const menuAdded = records.some((record) => Array.from(record.addedNodes).some((node) => (
+      node.nodeType === Node.ELEMENT_NODE
+      && (node.matches(textMenu) || node.querySelector(textMenu))
+    )));
+    if (menuAdded) scheduleSettingUpdate();
+  }).observe(document.querySelector("#root") || document.body, {
     childList: true,
     subtree: true,
   });
+  ensureSetting();
 })();

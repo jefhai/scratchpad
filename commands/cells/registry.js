@@ -2,6 +2,7 @@
   const commands = [];
 
   function register(command) {
+    if (globalThis.document?.currentScript?.dataset?.scratchpadLoadExpired === "true") return;
     if (!command?.id || typeof command.run !== "function") {
       throw new Error("Invalid cell command definition");
     }
@@ -32,6 +33,10 @@
     return Number.parseFloat(value.toPrecision(12)).toString();
   }
 
-  globalThis.ScratchpadCellCommands = Object.freeze({ register, all: () => commands.slice() });
+  globalThis.ScratchpadCellCommands = Object.freeze({
+    register,
+    get: (id) => commands.find((command) => command.id === id),
+    all: () => commands.slice(),
+  });
   globalThis.ScratchpadCellCommandUtils = Object.freeze({ cleanNumber, numericValues, requireNumbers });
 })();

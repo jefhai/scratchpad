@@ -270,6 +270,68 @@
 .column-header { top: 0; }
 .row-header { left: 0; }
 
+.sheet-header-select {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sheet-header-select:focus-visible {
+  outline: 2px solid var(--deep);
+  outline-offset: -3px;
+}
+
+.sheet-resize-handle {
+  position: absolute;
+  z-index: 5;
+  touch-action: none;
+  user-select: none;
+  outline: none;
+}
+
+.column-resize-handle {
+  inset: 0 -1px 0 auto;
+  width: 12px;
+  cursor: col-resize;
+}
+
+.row-resize-handle {
+  inset: auto 0 -1px 0;
+  height: 12px;
+  cursor: row-resize;
+}
+
+.sheet-resize-handle::after {
+  position: absolute;
+  border-radius: 2px;
+  background: var(--deep);
+  opacity: 0;
+  content: "";
+}
+
+.column-resize-handle::after { inset: 3px 0 3px auto; width: 3px; }
+.row-resize-handle::after { inset: auto 3px 0 3px; height: 3px; }
+
+.sheet-resize-handle:hover::after,
+.sheet-resize-handle:focus-visible::after,
+.sheet-resize-handle[data-resizing]::after { opacity: 1; }
+
+.sheet-grid[data-resizing] { user-select: none; }
+.sheet-grid[data-resizing="column"] * { cursor: col-resize; }
+.sheet-grid[data-resizing="row"] * { cursor: row-resize; }
+
+@media (pointer: coarse) {
+  .column-resize-handle { width: 18px; }
+  .row-resize-handle { height: 18px; }
+  .sheet-resize-handle::after { opacity: .35; }
+}
+
 .column-header:hover,
 .row-header:hover,
 .column-header.selected,
@@ -409,11 +471,6 @@
 }
 
 @media (max-width: 520px) {
-  :root {
-    --cell-width: 124px;
-    --row-header-width: 46px;
-  }
-
   .sheet-statusbar .shortcut-label {
     display: none;
   }

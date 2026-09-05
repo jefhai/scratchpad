@@ -13,84 +13,33 @@
     <meta name="twitter:description" content="Transform text or calculate across selected spreadsheet cells from one focused workspace." />
     <meta name="twitter:image" content="./public/og.png" />
     <link rel="icon" type="image/svg+xml" href="./public/favicon.svg" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="stylesheet" href="./app.css" />
     <link rel="stylesheet" href="./cellpad.css" />
     <link rel="stylesheet" href="./mobile.css?v=20260826-9" />
+    <link rel="stylesheet" href="./ui/workspace.css" />
     <title>Scratchpad</title>
   </head>
   <body>
     <div id="root"></div>
-    <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
-    <script src="./commands/registry.js"></script>
-    <script src="./commands/format-json.js"></script>
-    <script src="./commands/base64-encode.js"></script>
-    <script src="./commands/url-encode.js"></script>
-    <script src="./commands/uppercase.js"></script>
-    <script src="./commands/minify-json.js"></script>
-    <script src="./commands/sort-json.js"></script>
-    <script src="./commands/json-csv.js"></script>
-    <script src="./commands/csv-json.js"></script>
-    <script src="./commands/query-json.js"></script>
-    <script src="./commands/json-query.js"></script>
-    <script src="./commands/sample-json.js"></script>
-    <script src="./commands/base64-decode.js"></script>
-    <script src="./commands/url-decode.js"></script>
-    <script src="./commands/html-encode.js"></script>
-    <script src="./commands/html-decode.js"></script>
-    <script src="./commands/hex-ascii.js"></script>
-    <script src="./commands/ascii-hex.js"></script>
-    <script src="./commands/rot13.js"></script>
-    <script src="./commands/url-defang.js"></script>
-    <script src="./commands/url-refang.js"></script>
-    <script src="./commands/lowercase.js"></script>
-    <script src="./commands/title-case.js"></script>
-    <script src="./commands/camel-case.js"></script>
-    <script src="./commands/snake-case.js"></script>
-    <script src="./commands/kebab-case.js"></script>
-    <script src="./commands/sponge-case.js"></script>
-    <script src="./commands/trim.js"></script>
-    <script src="./commands/collapse.js"></script>
-    <script src="./commands/sort-lines.js"></script>
-    <script src="./commands/reverse-lines.js"></script>
-    <script src="./commands/reverse-string.js"></script>
-    <script src="./commands/dedupe-lines.js"></script>
-    <script src="./commands/shuffle-lines.js"></script>
-    <script src="./commands/markdown-quote.js"></script>
-    <script src="./commands/smart-quotes.js"></script>
-    <script src="./commands/count.js"></script>
-    <script src="./commands/lorem.js"></script>
-    <script src="./commands/decimal-binary.js"></script>
-    <script src="./commands/binary-decimal.js"></script>
-    <script src="./commands/decimal-hex.js"></script>
-    <script src="./commands/hex-decimal.js"></script>
-    <script src="./commands/date-timestamp.js"></script>
-    <script src="./commands/epoch-now.js"></script>
-    <script src="./commands/timestamp-date.js"></script>
-    <script src="./commands/jwt-decode.js"></script>
-    <script src="./commands/sha1.js"></script>
-    <script src="./commands/sha256.js"></script>
-    <script src="./commands/sha512.js"></script>
-    <script src="./commands/cells/registry.js"></script>
-    <script src="./commands/cells/sum.js"></script>
-    <script src="./commands/cells/subtract.js"></script>
-    <script src="./commands/cells/multiply.js"></script>
-    <script src="./commands/cells/divide.js"></script>
-    <script src="./commands/cells/average.js"></script>
-    <script src="./commands/cells/minimum.js"></script>
-    <script src="./commands/cells/maximum.js"></script>
-    <script src="./commands/cells/count.js"></script>
-    <script src="./core/history.js"></script>
-    <script src="./core/documents.js"></script>
-    <script src="./core/workspace.js"></script>
-    <script src="./ui/shared.js"></script>
-    <script src="./ui/text-pad.js"></script>
-    <script src="./ui/cell-pad.js"></script>
-    <script src="./editor-defaults.js"></script>
-    <script src="./app.js"></script>
-    <script src="./themes.js?v=20260826-5"></script>
-    <script src="./keyboard-shortcuts.js?v=20260826-3"></script>
-    <script src="./settings-presets.js?v=20260826-3"></script>
-    <script src="./responsive-layout.js?v=20260826-1"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+    <script defer src="./commands/registry.js"></script>
+    <script defer src="./commands/cells/registry.js"></script>
+    <script defer src="./commands/catalog.js"></script>
+    <script defer src="./commands/loader.js"></script>
+    <script defer src="./core/history.js"></script>
+    <script defer src="./core/documents.js"></script>
+    <script defer src="./core/workspace.js"></script>
+    <script defer src="./core/command-execution.js"></script>
+    <script defer src="./ui/shared.js"></script>
+    <script defer src="./ui/command-palette.js"></script>
+    <script defer src="./ui/text-pad.js"></script>
+    <script defer src="./ui/cell-pad.js"></script>
+    <script defer src="./editor-defaults.js"></script>
+    <script defer src="./app.js"></script>
+    <script defer src="./themes.js?v=20260826-5"></script>
+    <script defer src="./keyboard-shortcuts.js?v=20260826-3"></script>
+    <script defer src="./responsive-layout.js?v=20260826-1"></script>
   </body>
 </html>

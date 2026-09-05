@@ -1,5 +1,5 @@
 (() => {
-  const { useEffect, useMemo, useRef, useState } = React;
+  const { useEffect, useRef, useState } = React;
   const h = React.createElement;
   const Domain = globalThis.ScratchpadDomain;
   const UI = globalThis.ScratchpadUI;
@@ -10,6 +10,11 @@
       workspaceRef.current = new Domain.Workspace(ScratchpadCommandUtils.sampleJson);
     }
     const workspace = workspaceRef.current;
+    const executionRef = useRef(null);
+    if (!executionRef.current) {
+      executionRef.current = new Domain.CommandExecution(workspace, ScratchpadCommandLibrary);
+    }
+    const execution = executionRef.current;
     const [, setRevision] = useState(0);
     const [paletteOpen, setPaletteOpen] = useState(false);
     const [query, setQuery] = useState("");
@@ -19,9 +24,7 @@
     const shortcut = /mac|iphone|ipad|ipod/i.test(`${navigator.platform} ${navigator.userAgent}`)
       ? "⌘"
       : "Ctrl";
-    const textCommands = useMemo(() => ScratchpadCommands.all(), []);
-    const cellCommands = useMemo(() => ScratchpadCellCommands.all(), []);
-    const commands = active.kind === "text" ? textCommands : cellCommands;
+    const commands = ScratchpadCommandCatalog[active.kind];
 
     function refresh() {
       setRevision((revision) => revision + 1);
@@ -32,6 +35,7 @@
     }
 
     function focusActive() {
+      if (window.matchMedia("(pointer: coarse)").matches) return;
       requestAnimationFrame(() => {
         if (workspace.active.kind === "text") {
           const editor = document.querySelector("textarea.editor");
@@ -49,9 +53,19 @@
     }
 
     function closePalette() {
+      execution.cancel();
+      setWorking(false);
       setPaletteOpen(false);
       setQuery("");
       focusActive();
+    }
+
+    function openPalette() {
+      document.dispatchEvent(new CustomEvent("scratchpad:popover-open", {
+        detail: { id: "command-palette" },
+      }));
+      setPaletteOpen(true);
+      setQuery("");
     }
 
     function undo() {
@@ -65,40 +79,20 @@
     }
 
     async function runCommand(command) {
-      const pad = workspace.active;
+      if (execution.working) return;
       setWorking(true);
       try {
-        if (pad.kind === "text") {
-          const { start, end } = pad.selection;
-          const hasSelection = end > start;
-          const input = hasSelection ? pad.text.slice(start, end) : pad.text;
-          const replacement = await command.run(input, { setNotice: notify });
-          const next = hasSelection
-            ? pad.text.slice(0, start) + replacement + pad.text.slice(end)
-            : replacement;
-          if (next === pad.text) {
-            if (command.id !== "count") notify(`${command.name} · No change`);
-          } else {
-            pad.setText(next);
-            if (hasSelection) pad.setSelection(start, start + replacement.length);
-            else pad.setSelection(0, 0);
-            notify(`${command.name} · ${hasSelection ? "selection" : "full text"}`);
-            refresh();
-          }
-        } else {
-          const value = command.run(pad.selectedEntries(), {
-            selection: pad.selection,
-            grid: pad.grid,
-          });
-          pad.result = { name: command.name, value: String(value) };
-          notify(`${command.name} · ${value}`);
-          refresh();
-        }
+        const editor = document.querySelector("textarea.editor");
+        const tabSize = Number.parseInt(editor ? getComputedStyle(editor).tabSize : "2", 10);
+        const result = await execution.run(command, { tabSize });
+        if (result.status === "cancelled" || result.status === "busy") return;
+        if (result.notice) notify(result.notice);
+        if (result.status === "changed") refresh();
         closePalette();
       } catch (error) {
         notify(error instanceof Error ? error.message : `Could not run ${command.name}`, "error");
       } finally {
-        setWorking(false);
+        setWorking(execution.working);
       }
     }
 
@@ -110,16 +104,14 @@
 
     useEffect(() => {
       function handleKeyDown(event) {
+        if (event.defaultPrevented || event.isComposing || event.altKey) return;
         const modifier = event.ctrlKey || event.metaKey;
         const key = event.key.toLowerCase();
         if (modifier && key === "j") {
           event.preventDefault();
           if (event.repeat) return;
           if (paletteOpen) closePalette();
-          else {
-            setPaletteOpen(true);
-            setQuery("");
-          }
+          else openPalette();
           return;
         }
         if (event.key === "Escape" && paletteOpen) {
@@ -127,6 +119,11 @@
           closePalette();
           return;
         }
+        const target = event.target;
+        const editor = target.closest?.("textarea.editor, input.cell-input");
+        const otherInput = target.closest?.("input, textarea, select, [contenteditable]:not([contenteditable='false'])");
+        const popup = target.closest?.("[role='dialog'], [role='menu']");
+        if (popup || (otherInput && !editor)) return;
         if (!paletteOpen && modifier && key === "z") {
           event.preventDefault();
           if (!event.repeat) event.shiftKey ? redo() : undo();
@@ -144,9 +141,10 @@
     });
 
     useEffect(() => {
+      execution.cancel();
+      setWorking(false);
       setPaletteOpen(false);
       setQuery("");
-      focusActive();
     }, [active.id]);
 
     const paletteMeta = active.kind === "text"
@@ -164,7 +162,7 @@
             pad: active,
             notify,
             onChange: refresh,
-            onOpenCommands: () => setPaletteOpen(true),
+            onOpenCommands: openPalette,
             shortcut,
           })
           : h(UI.CellPad, {
@@ -172,7 +170,7 @@
             pad: active,
             notify,
             onChange: refresh,
-            onOpenCommands: () => setPaletteOpen(true),
+            onOpenCommands: openPalette,
             shortcut,
           }),
       ),

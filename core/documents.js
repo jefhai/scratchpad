@@ -23,6 +23,23 @@
 
   function cloneGrid(grid) { return grid.map((row) => row.slice()); }
 
+  const SHEET_DIMENSIONS = {
+    column: { min: 56, max: 640, default: 140 },
+    row: { min: 24, max: 240, default: 30 },
+  };
+
+  function cloneSheet(state) {
+    return {
+      grid: cloneGrid(state.grid),
+      columnWidths: state.columnWidths.slice(),
+      rowHeights: state.rowHeights.slice(),
+    };
+  }
+
+  function fitDimensions(values, length) {
+    return Array.from({ length }, (_, index) => values[index] ?? null);
+  }
+
   function initialSelection() {
     return {
       kind: "cells",
@@ -75,15 +92,25 @@
       super({ id, title, kind: "text", initialValue: text });
       this.selection = { start: 0, end: 0, direction: "none" };
       this.scroll = { top: 0, left: 0 };
+      this.cachedStats = null;
     }
 
     get text() { return this.value; }
 
     get stats() {
+      const text = this.text;
+      if (!this.cachedStats || this.cachedStats.text !== text) {
+        this.cachedStats = {
+          text,
+          counts: {
+            characters: text.length,
+            words: text.match(/\S+/g)?.length ?? 0,
+            lines: Math.max(1, text.split(/\r?\n/).length),
+          },
+        };
+      }
       return {
-        characters: this.text.length,
-        words: this.text.match(/\S+/g)?.length ?? 0,
-        lines: Math.max(1, this.text.split(/\r?\n/).length),
+        ...this.cachedStats.counts,
         selected: Math.abs(this.selection.end - this.selection.start),
       };
     }
@@ -101,7 +128,15 @@
 
   class SheetDocument extends PadDocument {
     constructor({ id, title, grid = blankGrid() }) {
-      super({ id, title, kind: "sheet", initialValue: grid, clone: cloneGrid });
+      super({
+        id, title, kind: "sheet",
+        initialValue: {
+          grid,
+          columnWidths: Array(grid[0].length).fill(null),
+          rowHeights: Array(grid.length).fill(null),
+        },
+        clone: cloneSheet,
+      });
       this.selection = initialSelection();
       this.activeCell = { row: 0, column: 0 };
       this.cellAnchor = { row: 0, column: 0 };
@@ -111,20 +146,81 @@
       this.scroll = { top: 0, left: 0 };
     }
 
+    get value() { return this.history.present.grid; }
     get grid() { return this.value; }
+    get columnWidths() { return this.history.present.columnWidths; }
+    get rowHeights() { return this.history.present.rowHeights; }
     get rowCount() { return this.grid.length; }
     get columnCount() { return this.grid[0].length; }
     get activeValue() {
       return this.grid[this.activeCell.row]?.[this.activeCell.column] ?? "";
     }
 
-    replaceGrid(grid) { return this.history.commit(grid); }
+    replaceGrid(grid, { columnWidths = this.columnWidths, rowHeights = this.rowHeights, group = null } = {}) {
+      return this.history.commit({
+        grid,
+        columnWidths: fitDimensions(columnWidths, grid[0].length),
+        rowHeights: fitDimensions(rowHeights, grid.length),
+      }, { group });
+    }
+
+    dimension(axis, index, fallback = SHEET_DIMENSIONS[axis].default) {
+      return (axis === "column" ? this.columnWidths : this.rowHeights)[index] ?? fallback;
+    }
+
+    resize(axis, index, pixels) {
+      if (!Object.hasOwn(SHEET_DIMENSIONS, axis)) return false;
+      const key = axis === "column" ? "columnWidths" : "rowHeights";
+      const values = this[key];
+      if (!Number.isInteger(index) || index < 0 || index >= values.length) return false;
+      if (pixels !== null && !Number.isFinite(pixels)) return false;
+      const limits = SHEET_DIMENSIONS[axis];
+      const next = pixels === null ? null : Math.round(Math.max(limits.min, Math.min(limits.max, pixels)));
+      if (values[index] === next) return false;
+      const dimensions = values.slice();
+      dimensions[index] = next;
+      return this.history.commit({ ...this.history.present, [key]: dimensions });
+    }
+
+    clampSelection() {
+      const clamp = ({ row, column }) => ({
+        row: Math.max(0, Math.min(row, this.rowCount - 1)),
+        column: Math.max(0, Math.min(column, this.columnCount - 1)),
+      });
+      this.activeCell = clamp(this.activeCell);
+      this.cellAnchor = clamp(this.cellAnchor);
+      this.rowAnchor = Math.min(this.rowAnchor, this.rowCount - 1);
+      this.columnAnchor = Math.min(this.columnAnchor, this.columnCount - 1);
+      this.selection = {
+        ...this.selection,
+        start: clamp(this.selection.start),
+        end: clamp(this.selection.end),
+        rows: this.selection.rows.filter((row) => row < this.rowCount),
+        columns: this.selection.columns.filter((column) => column < this.columnCount),
+      };
+      if ((this.selection.kind === "rows" && !this.selection.rows.length)
+        || (this.selection.kind === "columns" && !this.selection.columns.length)) {
+        this.focusCell(this.activeCell.row, this.activeCell.column);
+      }
+    }
+
+    undo() {
+      const changed = super.undo();
+      if (changed) this.clampSelection();
+      return changed;
+    }
+
+    redo() {
+      const changed = super.redo();
+      if (changed) this.clampSelection();
+      return changed;
+    }
 
     setCell(row, column, value, kind = "typing") {
       if (this.grid[row][column] === value) return false;
       const next = cloneGrid(this.grid);
       next[row][column] = value;
-      return this.history.commit(next, {
+      return this.replaceGrid(next, {
         group: kind === "typing" ? `typing:${row}:${column}` : null,
       });
     }
@@ -273,7 +369,7 @@
       const removing = new Set(this.selection.rows);
       const next = this.grid.filter((_, row) => !removing.has(row));
       if (!next.length) next.push(Array(this.columnCount).fill(""));
-      this.replaceGrid(next);
+      this.replaceGrid(next, { rowHeights: this.rowHeights.filter((_, row) => !removing.has(row)) });
       this.focusCell(0, 0);
       return removing.size;
     }
@@ -283,7 +379,7 @@
       const removing = new Set(this.selection.columns);
       const next = this.grid.map((row) => row.filter((_, column) => !removing.has(column)));
       if (!next[0].length) next.forEach((row) => row.push(""));
-      this.replaceGrid(next);
+      this.replaceGrid(next, { columnWidths: this.columnWidths.filter((_, column) => !removing.has(column)) });
       this.focusCell(0, 0);
       return removing.size;
     }
@@ -326,6 +422,7 @@
   Object.assign(Domain, {
     PadDocument,
     SheetDocument,
+    SHEET_DIMENSIONS,
     TextDocument,
     blankGrid,
     cloneGrid,

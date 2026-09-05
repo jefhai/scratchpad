@@ -1,6 +1,6 @@
 (() => {
   const UI = globalThis.ScratchpadUI;
-  const { useEffect, useRef, useState } = React;
+  const { useEffect, useMemo, useRef, useState } = React;
   const h = React.createElement;
 
   const DEFAULT_SETTINGS = {
@@ -27,25 +27,29 @@
     }
   }
 
+  // Selection changes update the gutter highlight directly; only line count changes rebuild its rows.
+  const LineNumbers = React.memo(function LineNumbers({ count, gutterRef }) {
+    return h("div", { className: "line-numbers", ref: gutterRef, "aria-hidden": "true" },
+      h("div", null, Array.from({ length: count }, (_, index) => h("span", { key: index }, index + 1))),
+    );
+  });
+
   function TextPad({ pad, notify, onChange, onOpenCommands, shortcut }) {
     const editorRef = useRef(null);
     const lineNumbersRef = useRef(null);
     const fileInputRef = useRef(null);
     const [settings, setSettings] = useState(loadSettings);
-    const lines = Math.max(1, pad.text.split(/\r?\n/).length);
-    const focusPosition = pad.selection.direction === "backward"
-      ? pad.selection.start
-      : pad.selection.end;
-    const activeLine = pad.text.slice(0, focusPosition).split(/\r?\n/).length - 1;
+    const lines = useMemo(() => Math.max(1, pad.text.split(/\r?\n/).length), [pad.text]);
 
     useEffect(() => {
-      localStorage.setItem("workbench-editor-settings", JSON.stringify(settings));
+      try { localStorage.setItem("workbench-editor-settings", JSON.stringify(settings)); } catch { /* Settings remain usable without storage. */ }
       const shell = document.querySelector(".app-shell");
       shell?.style.setProperty("--editor-line-height", `${settings.lineHeight}px`);
       shell?.style.setProperty("--caret-spacing", `${settings.caretSpacing}px`);
       shell?.style.setProperty("--editor-tab-size", settings.tabSize);
-      shell?.style.setProperty("--editor-left-spacing", `${settings.tabSize}ch`);
       shell?.style.setProperty("--line-number-size", `${settings.lineNumberSize}px`);
+      shell?.style.setProperty("--underline-gap", `${settings.underlineGap}px`);
+      document.dispatchEvent(new CustomEvent("scratchpad:display-settings-changed"));
     }, [settings]);
 
     useEffect(() => {
@@ -54,16 +58,36 @@
       editor.scrollTop = pad.scroll.top;
       editor.scrollLeft = pad.scroll.left;
       editor.setSelectionRange(pad.selection.start, pad.selection.end, pad.selection.direction);
-      editor.focus();
+      if (document.activeElement === document.body && !window.matchMedia("(pointer: coarse)").matches) {
+        editor.focus({ preventScroll: true });
+      }
+    }, [pad.id]);
+
+    useEffect(() => {
+      let frame = 0;
+      const selectionChanged = () => {
+        if (document.activeElement !== editorRef.current || frame) return;
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          if (editorRef.current) syncSelection({ currentTarget: editorRef.current });
+        });
+      };
+      document.addEventListener("selectionchange", selectionChanged);
+      return () => {
+        cancelAnimationFrame(frame);
+        document.removeEventListener("selectionchange", selectionChanged);
+      };
     }, [pad.id]);
 
     function syncSelection(event) {
       const editor = event.currentTarget;
+      if (pad.selection.start === editor.selectionStart && pad.selection.end === editor.selectionEnd
+        && pad.selection.direction === editor.selectionDirection) return;
       pad.setSelection(editor.selectionStart, editor.selectionEnd, editor.selectionDirection);
       onChange();
     }
 
-  function changeText(event) {
+    function changeText(event) {
       const historyKind = event.nativeEvent?.scratchpadHistoryKind ?? "typing";
       pad.setText(event.target.value, historyKind);
       pad.setSelection(event.target.selectionStart, event.target.selectionEnd, event.target.selectionDirection);
@@ -71,6 +95,7 @@
     }
 
     function focusEditor() {
+      if (window.matchMedia("(pointer: coarse)").matches) return;
       requestAnimationFrame(() => editorRef.current?.focus());
     }
 
@@ -85,8 +110,10 @@
     }
 
     async function copyText() {
-      await navigator.clipboard.writeText(pad.text);
-      notify("Copied to clipboard");
+      try {
+        await navigator.clipboard.writeText(pad.text);
+        notify("Copied to clipboard");
+      } catch { notify("Clipboard access is unavailable. Select the text and copy it manually.", "error"); }
     }
 
     function saveText() {
@@ -116,15 +143,19 @@
 
     const stats = pad.stats;
     return h(React.Fragment, null,
-      h("div", { className: "editor-toolbar" },
-        h("div", { className: "editor-meta" },
-          h("span", null, "SCRATCHPAD"),
-          h("span", null,
-            `${stats.characters.toLocaleString()} chars · ${stats.words.toLocaleString()} words · ${stats.lines.toLocaleString()} lines`,
-            stats.selected > 0 ? ` · ${stats.selected.toLocaleString()} selected` : "",
-          ),
-        ),
-        h("div", { className: "editor-actions" },
+      h(UI.PadToolbar, {
+        label: "SCRATCHPAD",
+        metrics: `${stats.characters.toLocaleString()} chars · ${stats.words.toLocaleString()} words · ${stats.lines.toLocaleString()} lines`
+          + (stats.selected > 0 ? ` · ${stats.selected.toLocaleString()} selected` : ""),
+        settings: h(UI.DisplaySettings, {
+          definitions: SETTING_DEFINITIONS,
+          editorKind: "text",
+          id: "text-display-settings",
+          settings,
+          onChange: (key, value) => setSettings((current) => ({ ...current, [key]: value })),
+          onReset: () => setSettings(DEFAULT_SETTINGS),
+        }),
+      },
           h("button", { onClick: () => fileInputRef.current?.click() }, "Open"),
           h("input", {
             ref: fileInputRef,
@@ -143,25 +174,10 @@
               focusEditor();
             },
           }, "Clear"),
-          h("button", { className: "theme-button", type: "button", "aria-label": "Choose color theme" }),
-          h(UI.DisplaySettings, {
-            definitions: SETTING_DEFINITIONS,
-            editorKind: "text",
-            id: "text-display-settings",
-            settings,
-            onChange: (key, value) => setSettings((current) => ({ ...current, [key]: value })),
-            onReset: () => setSettings(DEFAULT_SETTINGS),
-          }),
-        ),
       ),
-      h("div", { className: "editor-wrap" },
+      h("div", { className: "editor-wrap", id: "active-pad-content", role: "tabpanel", "aria-labelledby": `pad-tab-${pad.id}` },
         h("span", { className: "active-line-underline", "aria-hidden": "true" }),
-        h("div", { className: "line-numbers", ref: lineNumbersRef, "aria-hidden": "true" },
-          h("div", null, Array.from({ length: lines }, (_, index) => h("span", {
-            className: index === activeLine ? "active" : "",
-            key: index,
-          }, index + 1))),
-        ),
+        h(LineNumbers, { count: lines, gutterRef: lineNumbersRef }),
         h("textarea", {
           ref: editorRef,
           className: "editor",
@@ -184,10 +200,12 @@
           "aria-label": `${pad.title} text`,
           placeholder: `Paste text here, then press ${shortcut}+J…`,
           spellCheck: false,
+          autoCapitalize: "off",
+          autoCorrect: "off",
           wrap: "off",
         }),
       ),
-      h("footer", { className: "editor-footer" },
+      h(UI.PadFooter, null,
         h(UI.PadControls, {
           document: pad,
           onOpenCommands,

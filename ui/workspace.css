@@ -1,0 +1,238 @@
+/* Shared workspace chrome: one layout for both kinds of pad. */
+.app-shell {
+  --control-size: 36px;
+  --chrome-inset: clamp(12px, 2.2vw, 32px);
+  height: var(--workspace-height, 100dvh);
+  position: fixed;
+  top: var(--workspace-top, 0px);
+  left: 0;
+}
+
+.tabs-bar {
+  height: 48px;
+  padding: 4px var(--chrome-inset) 0;
+  gap: 0;
+}
+.tabs-list { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.tab-item { flex: 0 0 auto; min-width: 144px; max-width: 220px; grid-template-columns: minmax(0, 1fr) 34px; }
+.tab-button { font-size: 12px; }
+.tab-close { width: 30px; height: 34px; }
+.add-tab { width: 38px; height: 38px; margin: 0 0 2px; }
+
+.pad-toolbar {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px var(--chrome-inset);
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+.pad-meta { min-width: 0; display: flex; align-items: center; gap: 16px; color: var(--muted); }
+.pad-kind { flex: 0 0 auto; font: 700 10px/1.5 var(--font-geist-mono), monospace; letter-spacing: .08em; }
+.pad-metrics { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.pad-metrics > span { display: inline-block; white-space: nowrap; font: 500 11px/1.7 var(--font-geist-mono), monospace; }
+/* The action list's scrollbar must not shift the fixed controls downward. */
+.pad-tools { min-width: 0; display: flex; align-items: flex-start; gap: 8px; }
+.pad-actions { min-width: 0; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.pad-fixed-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+.pad-fixed-actions > .settings-wrap {
+  display: flex;
+  flex: 0 0 var(--control-size);
+  width: var(--control-size);
+  height: var(--control-size);
+  align-items: center;
+}
+.pad-actions > button,
+.pad-fixed-actions > button,
+.pad-fixed-actions .settings-button {
+  flex: 0 0 auto;
+  min-height: var(--control-size);
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: 500 12px/1 var(--font-geist-sans), sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pad-actions > button:hover,
+.pad-fixed-actions > button:hover,
+.pad-fixed-actions .settings-button:hover { border-color: var(--line); background: var(--paper); color: var(--ink); }
+.pad-actions > button[aria-pressed="true"] { border-color: var(--deep); background: var(--deep); color: var(--paper); }
+.pad-fixed-actions > .theme-button,
+.pad-fixed-actions .settings-button { position: relative; width: var(--control-size); height: var(--control-size); padding: 0; border-color: var(--line); }
+.pad-fixed-actions .settings-button { display: grid; place-items: center; appearance: none; }
+.settings-button > .settings-icon { display: block; width: 20px; height: 20px; pointer-events: none; }
+.pad-fixed-actions .theme-button { font-size: 0; line-height: 0; }
+.pad-fixed-actions .theme-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 19px;
+  height: 19px;
+  background: var(--theme-button-symbol) center / contain no-repeat;
+}
+.pad-toolbar.is-compact { flex-wrap: wrap; gap: 5px; }
+.pad-toolbar.is-compact .pad-tools { order: 0; width: 100%; }
+.pad-toolbar.is-compact .pad-actions { flex: 1 1 auto; }
+.pad-toolbar.is-compact .pad-meta { order: 1; width: 100%; }
+
+.pad-footer {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px var(--chrome-inset) max(10px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 11px;
+}
+.pad-controls { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.pad-controls > .pad-control-button {
+  min-height: var(--control-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.pad-controls > .pad-control-button:hover:not(:disabled) { background: var(--paper); }
+.pad-controls > .pad-control-button:disabled { opacity: .4; cursor: default; }
+.pad-control-button .shortcut-keys { display: flex; align-items: center; gap: 3px; }
+.pad-control-button kbd { margin: 0; }
+.app-shell kbd { border-color: var(--line); background: var(--paper); color: var(--muted); }
+.pad-control-button .shortcut-label {
+  display: inline-flex;
+  align-items: center;
+  height: auto;
+  margin: 0;
+  color: var(--muted);
+  font: 500 12px/1 var(--font-geist-sans), sans-serif;
+  transform: none;
+}
+.pad-footer .footer-prompt { font-size: 11px; }
+.pad-footer .sheet-result { flex-wrap: wrap; row-gap: 5px; }
+.pad-footer .sheet-result button { min-height: var(--control-size); }
+
+.app-shell button:focus-visible,
+.theme-menu button:focus-visible,
+.pad-metrics:focus-visible { outline: 2px solid var(--deep); outline-offset: -2px; }
+.settings-menu, .theme-menu, .new-pad-menu {
+  position: fixed;
+  right: auto !important;
+  bottom: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.settings-menu { width: 320px; padding: 18px; gap: 16px; }
+.theme-menu { width: 300px; }
+.new-pad-menu { width: 250px; }
+.settings-heading { align-items: center; }
+.settings-heading button, .theme-menu-close, .palette-close {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: 22px/1 var(--font-geist-sans), sans-serif;
+  cursor: pointer;
+}
+.settings-menu button { min-height: 36px; }
+.settings-menu .display-size-presets button[aria-pressed="true"] { border-color: var(--deep); background: var(--deep); color: var(--paper); }
+.setting-row strong { font-size: 12px; }
+.setting-row small { font-size: 11px; }
+.setting-row input[type="range"] { height: 24px; margin: 0; accent-color: var(--deep); }
+.settings-menu .reset-settings { justify-self: start; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+.theme-option { min-height: 52px; }
+.theme-option-copy strong { font-size: 13px; }
+.theme-option-copy small { font-size: 11px; }
+.new-pad-menu button { min-height: 58px; }
+.new-pad-menu small { font-size: 10px; }
+
+.editor { color: var(--editor-text); }
+.app-shell.dark .editor { color: var(--editor-text); }
+.cell-input { color: var(--editor-text); }
+.line-numbers { color: var(--muted); }
+.app-shell .line-numbers span.active { color: var(--editor-text); }
+.active-line-underline { border-color: var(--deep); }
+.app-shell.dark .active-line-underline { border-color: var(--deep); }
+
+.palette-backdrop {
+  top: var(--workspace-top, 0px);
+  bottom: auto;
+  height: var(--workspace-height, 100dvh);
+  padding: 16px;
+}
+.command-palette { max-height: min(700px, calc(var(--workspace-height, 100dvh) - 32px)); }
+.search-box input { font-size: 16px; }
+.app-shell .search-box { border-color: var(--line); background: var(--panel); box-shadow: 0 2px var(--line); }
+.app-shell .search-box:focus-within { border-color: var(--deep); box-shadow: 0 0 0 3px color-mix(in srgb, var(--deep) 25%, transparent); }
+.app-shell .command-icon { background: color-mix(in srgb, var(--line) 45%, var(--panel)); color: var(--ink); }
+.app-shell .command-row:hover,
+.app-shell .command-row.selected { border-color: var(--line); background: var(--panel); box-shadow: 0 2px var(--line); }
+.app-shell .selected .command-icon { background: var(--deep); color: var(--paper); }
+.command-row { min-height: 58px; }
+.command-copy small { white-space: normal; line-height: 1.4; }
+.toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
+
+@media (max-width: 700px), (pointer: coarse) {
+  .app-shell { --control-size: 44px; }
+  .tabs-bar { height: 52px; }
+  .tab-item { grid-template-columns: minmax(0, 1fr) 44px; }
+  .tab-close { width: 44px; height: 44px; }
+  .add-tab { width: 44px; height: 44px; }
+  .editor, .cell-input { font-size: 16px; }
+  .pad-toolbar { padding-top: 6px; padding-bottom: 6px; }
+  .pad-actions > button { padding: 0 9px; }
+  .pad-toolbar { flex-wrap: wrap; gap: 5px; }
+  .pad-toolbar .pad-tools { order: 0; width: 100%; }
+  .pad-toolbar .pad-actions { flex: 1 1 auto; }
+  .pad-toolbar .pad-meta { order: 1; width: 100%; gap: 10px; }
+  .pad-control-button .shortcut-keys { display: none; }
+  .pad-controls { width: 100%; gap: 8px; }
+  .pad-controls > .pad-control-button { flex: 1 1 0; padding: 8px; }
+  .pad-control-button .shortcut-label { font-size: 13px; }
+  .pad-footer { padding-top: 8px; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .pad-footer .footer-prompt { display: none; }
+  .pad-footer .sheet-result { width: 100%; margin: 0; padding: 4px 0 0; border-left: 0; }
+  .settings-heading button, .theme-menu-close, .palette-close { width: 44px; height: 44px; }
+  .settings-menu button { min-height: 44px; }
+  .setting-row input[type="range"] { height: 32px; }
+  .palette-backdrop { padding: 8px; }
+  .command-palette { max-height: calc(var(--workspace-height, 100dvh) - 16px); padding: 16px; }
+  .palette-close { top: 8px; right: 8px; }
+  .palette-title { padding-bottom: 12px; }
+  .palette-title > strong { font-size: 19px; }
+}
+
+@media (max-height: 500px) {
+  .command-palette { padding: 10px; }
+  .palette-title { padding-bottom: 8px; gap: 2px; }
+  .palette-title > strong { font-size: 16px; }
+  .palette-title > span { display: none; }
+  .palette-meta { padding-top: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
