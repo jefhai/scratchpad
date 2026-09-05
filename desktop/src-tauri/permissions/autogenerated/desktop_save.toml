@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-save"
+description = "Enables the desktop_save command without any pre-configured scope."
+commands.allow = ["desktop_save"]
+
+[[permission]]
+identifier = "deny-desktop-save"
+description = "Denies the desktop_save command without any pre-configured scope."
+commands.deny = ["desktop_save"]

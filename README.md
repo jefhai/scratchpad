@@ -84,3 +84,31 @@ The site consists of:
 
 All references are relative, so it also works when GitHub Pages serves the
 repository from a project subdirectory.
+
+## Desktop app
+
+The desktop package is an unverified native candidate, not release-ready.
+WebKit may reject startup under the strict no-network sandbox. A signed macOS
+26 launch and WebKit-helper network audit must pass without weakening that
+policy; see the compatibility gate in the desktop instructions below.
+
+`desktop/` wraps these same sources in Tauri for Apple Silicon/macOS
+Tahoe 26+ and Windows 11 x64. Named native windows each contain their own pad tabs, restore on
+relaunch, and offer a per-window Always on Top option. Assets are packaged
+locally for offline use; the native shell is Rust, with no Swift bridge or web
+bundler. The installed Mac app has no updater, analytics, remote assets, or
+download lookup. Its App Sandbox entitlements omit network access; the build
+checks those entitlements before producing the installer. Windows includes its
+own fixed WebView2 runtime and requires protected installation with app-scoped
+kernel network blocks; a missing policy prevents native startup.
+
+See [desktop build and release instructions](desktop/README.md) and
+[repository guidance](AGENTS.md). On your supported Mac, run `npm ci` and
+`npm run dist:mac` from `desktop/` to create a local DMG. For a Windows EXE, follow
+the [Windows build instructions](desktop/platforms/windows/README.md), prepare
+the pinned runtime, then run `npm run dist:windows`. Public downloads require
+native verification and the separate signed release process (plus notarization
+on Mac). The website-only popup offers each platform independently once its
+exact installer is attached to a public stable GitHub release.
+Building and notarizing can use the network. The installed app is intended to
+operate entirely offline, subject to the native compatibility gate above.

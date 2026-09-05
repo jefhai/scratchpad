@@ -1,0 +1,25 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Scratchpad",
+  "version": "1.0.0",
+  "identifier": "com.jeffreyhaines.scratchpad",
+  "build": {
+    "frontendDist": "../.web"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src ipc:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'",
+      "capabilities": ["workspaces"],
+      "freezePrototype": true
+    }
+  },
+  "bundle": {
+    "active": true,
+    "category": "Productivity",
+    "copyright": "Copyright © 2026 Jeffrey Haines",
+    "createUpdaterArtifacts": false,
+    "icon": ["../build/icon.icns", "../build/icon.ico", "../build/icon.png"]
+  }
+}

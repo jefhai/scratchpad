@@ -219,7 +219,10 @@
         ),
       ),
       h("div", { className: "pad-tools" },
-        h("div", { className: "pad-actions", ref: actionsRef, "aria-label": `${label} actions` }, children),
+        h("div", { className: "pad-actions", ref: actionsRef, "aria-label": `${label} actions` },
+          children,
+          UI.DesktopDownload && h(UI.DesktopDownload),
+        ),
         h("div", { className: "pad-fixed-actions", ref: fixedRef },
           h("button", { className: "theme-button", type: "button", "aria-label": "Choose color theme" }),
           settings,
@@ -229,6 +232,25 @@
   }
 
   function PadFooter({ children }) { return h("footer", { className: "pad-footer" }, children); }
+
+  async function copyText(text) {
+    if (globalThis.ScratchpadDesktop?.copyText) await globalThis.ScratchpadDesktop.copyText(text);
+    else await navigator.clipboard.writeText(text);
+  }
+
+  async function saveTextFile(text, kind) {
+    if (!["text", "sheet"].includes(kind)) throw new Error("Unknown document type");
+    if (globalThis.ScratchpadDesktop?.saveFile) return globalThis.ScratchpadDesktop.saveFile(text, kind);
+    const url = URL.createObjectURL(new Blob([text], {
+      type: kind === "text" ? "text/plain;charset=utf-8" : "text/csv;charset=utf-8",
+    }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = kind === "text" ? "scratchpad.txt" : "cellpad.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+    return true;
+  }
 
   function PadControls({ document, onOpenCommands, onRedo, onUndo, shortcut }) {
     const controls = [
@@ -247,5 +269,5 @@
     );
   }
 
-  Object.assign(UI, { DisplaySettings, PadControls, PadFooter, PadToolbar, TabBar });
+  Object.assign(UI, { DisplaySettings, PadControls, PadFooter, PadToolbar, TabBar, usePopover, copyText, saveTextFile });
 })();

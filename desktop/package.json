@@ -1,0 +1,30 @@
+{
+  "name": "scratchpad-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline Scratchpad and Cellpad workspaces for macOS and Windows 11, powered by Tauri",
+  "productName": "Scratchpad",
+  "author": "Jeffrey Haines",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "prepare:web": "node scripts/prepare-web.cjs",
+    "prepare:windows-runtime": "node scripts/prepare-windows-runtime.cjs",
+    "icons:build": "node scripts/build-icon.cjs",
+    "audit:mac": "node scripts/audit-mac.cjs",
+    "start": "node scripts/start.cjs",
+    "dist:mac": "node scripts/mac.cjs local",
+    "dist:mac:release": "node scripts/mac.cjs release",
+    "dist:windows": "node scripts/windows.cjs local",
+    "dist:windows:release": "node scripts/windows.cjs release",
+    "audit:windows": "node scripts/audit-windows.cjs",
+    "test": "node --test tests/*.test.cjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}

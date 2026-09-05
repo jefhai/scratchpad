@@ -4,11 +4,8 @@
   const Domain = globalThis.ScratchpadDomain;
   const UI = globalThis.ScratchpadUI;
 
-  function App() {
-    const workspaceRef = useRef(null);
-    if (!workspaceRef.current) {
-      workspaceRef.current = new Domain.Workspace(ScratchpadCommandUtils.sampleJson);
-    }
+  function App({ initialWorkspace, desktop }) {
+    const workspaceRef = useRef(initialWorkspace);
     const workspace = workspaceRef.current;
     const executionRef = useRef(null);
     if (!executionRef.current) {
@@ -20,6 +17,11 @@
     const [query, setQuery] = useState("");
     const [working, setWorking] = useState(false);
     const [toast, setToast] = useState(null);
+    const [windowInfo, setWindowInfo] = useState(desktop?.window ?? null);
+    const [renameOpen, setRenameOpen] = useState(false);
+    const [saveError, setSaveError] = useState(null);
+    const sessionRef = useRef(null);
+    const actionsRef = useRef(null);
     const active = workspace.active;
     const shortcut = /mac|iphone|ipad|ipod/i.test(`${navigator.platform} ${navigator.userAgent}`)
       ? "⌘"
@@ -28,6 +30,7 @@
 
     function refresh() {
       setRevision((revision) => revision + 1);
+      sessionRef.current?.schedule();
     }
 
     function notify(message, tone = "info") {
@@ -68,6 +71,20 @@
       setQuery("");
     }
 
+    function openRename() {
+      if (!desktop) return;
+      execution.cancel();
+      setWorking(false);
+      setPaletteOpen(false);
+      document.dispatchEvent(new CustomEvent("scratchpad:popover-open", { detail: { id: "rename-window" } }));
+      setRenameOpen(true);
+    }
+
+    async function renameWindow(name) {
+      const savedName = await desktop.bridge.renameWindow(name);
+      setWindowInfo((info) => ({ ...info, name: savedName }));
+    }
+
     function undo() {
       if (workspace.active.undo()) refresh();
       focusActive();
@@ -102,11 +119,54 @@
       return () => window.clearTimeout(timer);
     }, [toast]);
 
+    actionsRef.current = (action) => {
+      UI.routeDesktopAction(action, {
+        undo, redo, rename: openRename,
+        commands: () => { if (paletteOpen) closePalette(); else openPalette(); },
+      }, { modalOpen: renameOpen, paletteOpen });
+    };
+
+    useEffect(() => {
+      if (!desktop) return undefined;
+      const session = UI.createDesktopSession(desktop.bridge, workspace, (error) => {
+        setSaveError(error ? "Changes could not be saved on this device. "
+          + (error.message || "Try again before closing this window.") : null);
+      }, () => {
+        execution.cancel();
+        setWorking(false);
+      });
+      sessionRef.current = session;
+      const stopActions = desktop.bridge.onAction((action) => actionsRef.current(action));
+      const stopWindowInfo = desktop.bridge.onWindowInfo(setWindowInfo);
+      session.schedule();
+      return () => {
+        sessionRef.current = null;
+        stopActions();
+        stopWindowInfo();
+        session.dispose();
+      };
+    }, []);
+
+    useEffect(() => {
+      if (!desktop) return undefined;
+      // Child editors focus on mount. Restore the exact saved viewport after that focus.
+      const savedScroll = { ...active.scroll };
+      const frame = requestAnimationFrame(() => {
+        const viewport = document.querySelector(active.kind === "text" ? "textarea.editor" : ".sheet-viewport");
+        if (!viewport) return;
+        viewport.scrollTop = savedScroll.top;
+        viewport.scrollLeft = savedScroll.left;
+        active.scroll = savedScroll;
+      });
+      return () => cancelAnimationFrame(frame);
+    }, [active.id]);
+
     useEffect(() => {
       function handleKeyDown(event) {
         if (event.defaultPrevented || event.isComposing || event.altKey) return;
         const modifier = event.ctrlKey || event.metaKey;
         const key = event.key.toLowerCase();
+        if (renameOpen) return;
         if (modifier && key === "j") {
           event.preventDefault();
           if (event.repeat) return;
@@ -153,8 +213,9 @@
         : "Full text"
       : `${active.selectionLabel} · ${active.selectedEntries().filter((entry) => Domain.isNumeric(entry.value)).length} numeric`;
 
-    return h("main", { className: "app-shell" },
+    return h("main", { className: `app-shell${desktop ? " desktop" : ""}` },
       h("section", { className: `editor-panel ${active.kind === "sheet" ? "cell-mode" : "text-mode"}` },
+        desktop && h(UI.DesktopWindowBar, { windowInfo, onRename: openRename, saveError }),
         h(UI.TabBar, { workspace, onChange: refresh }),
         active.kind === "text"
           ? h(UI.TextPad, {
@@ -174,6 +235,11 @@
             shortcut,
           }),
       ),
+      renameOpen && h(UI.RenameWindowDialog, {
+        name: windowInfo.name,
+        onClose: () => setRenameOpen(false),
+        onRename: renameWindow,
+      }),
       paletteOpen && h(UI.CommandPalette, {
         commands,
         meta: paletteMeta,
@@ -191,5 +257,34 @@
     );
   }
 
-  ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+  const root = ReactDOM.createRoot(document.getElementById("root"));
+  const bridge = globalThis.ScratchpadDesktop;
+  if (!bridge && document.documentElement?.dataset?.desktopRuntime === "tauri") {
+    root.render(h("main", { className: "desktop-startup-error", role: "alert" },
+      h("h1", null, "The desktop app could not open"),
+      h("p", null, "Its local bridge is unavailable. Your saved workspaces remain on this device. Rebuild or reinstall the app before editing."),
+    ));
+    return;
+  }
+  if (!bridge) {
+    root.render(h(App, { initialWorkspace: new Domain.Workspace(ScratchpadCommandUtils.sampleJson) }));
+    return;
+  }
+  root.render(h("p", { className: "desktop-loading", role: "status" }, "Opening your workspace…"));
+  // Never mount an editable default workspace until the desktop load has succeeded.
+  // Failed or unsupported snapshots remain untouched on disk for recovery.
+  Promise.resolve().then(() => bridge.load()).then((loaded) => {
+    if (!loaded || !loaded.window || typeof loaded.window.name !== "string") throw new Error("Invalid desktop session response");
+    const workspace = loaded.workspace === null
+      ? new Domain.Workspace(ScratchpadCommandUtils.sampleJson)
+      : Domain.WorkspaceState.restore(loaded.workspace);
+    if (!workspace) throw new Error("This saved workspace is damaged or uses an unsupported format");
+    root.render(h(App, { initialWorkspace: workspace, desktop: { bridge, window: loaded.window } }));
+  }).catch(() => {
+    root.render(h("main", { className: "desktop-startup-error", role: "alert" },
+      h("h1", null, "Your workspace could not be opened"),
+      h("p", null, "The saved session has been kept on this device. Reopen this window to retry, or use the desktop session backup to recover it."),
+      h("button", { type: "button", onClick: () => location.reload() }, "Retry opening workspace"),
+    ));
+  });
 })();

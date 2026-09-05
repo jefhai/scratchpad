@@ -102,22 +102,20 @@
     async function copySelection() {
       const text = pad.selectionMatrix().map((row) => row.join("\t")).join("\n");
       try {
-        await navigator.clipboard.writeText(text);
+        await UI.copyText(text);
         notify(`${selected.length} cell${selected.length === 1 ? "" : "s"} copied`);
       } catch {
         notify("Clipboard access is unavailable. You can save the sheet as CSV.", "error");
       }
     }
 
-    function saveCsv() {
+    async function saveCsv() {
       const csv = pad.grid.map((row) => row.map(csvEscape).join(",")).join("\r\n");
-      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "cellpad.csv";
-      link.click();
-      URL.revokeObjectURL(url);
-      notify("Downloaded cellpad.csv");
+      try {
+        if (await UI.saveTextFile(csv, "sheet")) {
+          notify(globalThis.ScratchpadDesktop ? "Saved CSV file" : "Downloaded cellpad.csv");
+        }
+      } catch { notify("That file could not be saved", "error"); }
     }
 
     function clearSelectedCells(event) {

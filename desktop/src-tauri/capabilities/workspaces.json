@@ -1,0 +1,19 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "workspaces",
+  "description": "Local workspace windows may exchange only session state and application events.",
+  "local": true,
+  "windows": ["scratchpad-*"],
+  "platforms": ["macOS", "windows"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "allow-desktop-load",
+    "allow-desktop-save",
+    "allow-desktop-rename",
+    "allow-desktop-ready",
+    "allow-desktop-flushed",
+    "allow-desktop-copy-text",
+    "allow-desktop-save-file"
+  ]
+}

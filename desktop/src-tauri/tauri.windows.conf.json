@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src ipc: https://ipc.localhost; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
+    }
+  },
+  "bundle": {
+    "targets": ["nsis"],
+    "useLocalToolsDir": true,
+    "windows": {
+      "allowDowngrades": false,
+      "webviewInstallMode": { "type": "fixedRuntime", "path": "webview2" },
+      "nsis": {
+        "installMode": "perMachine",
+        "installerIcon": "../build/icon.ico",
+        "installerHooks": "../platforms/windows/installer-hooks.nsh",
+        "languages": ["English"],
+        "compression": "lzma"
+      }
+    }
+  }
+}

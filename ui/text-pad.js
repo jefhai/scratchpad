@@ -111,19 +111,17 @@
 
     async function copyText() {
       try {
-        await navigator.clipboard.writeText(pad.text);
+        await UI.copyText(pad.text);
         notify("Copied to clipboard");
       } catch { notify("Clipboard access is unavailable. Select the text and copy it manually.", "error"); }
     }
 
-    function saveText() {
-      const url = URL.createObjectURL(new Blob([pad.text], { type: "text/plain;charset=utf-8" }));
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "scratchpad.txt";
-      link.click();
-      URL.revokeObjectURL(url);
-      notify("Downloaded scratchpad.txt");
+    async function saveText() {
+      try {
+        if (await UI.saveTextFile(pad.text, "text")) {
+          notify(globalThis.ScratchpadDesktop ? "Saved text file" : "Downloaded scratchpad.txt");
+        }
+      } catch { notify("That file could not be saved", "error"); }
     }
 
     function openText(event) {

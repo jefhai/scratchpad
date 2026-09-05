@@ -1,0 +1,79 @@
+.desktop-download-wrap { display: flex; flex: 0 0 auto; }
+.desktop-download-button {
+  min-height: var(--control-size);
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: 500 12px/1 var(--font-geist-sans), sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.desktop-download-button:hover,
+.desktop-download-button[aria-expanded="true"] { border-color: var(--line); background: var(--paper); color: var(--ink); }
+.desktop-download-short-label { display: none; }
+.desktop-download-menu {
+  position: fixed;
+  z-index: 15;
+  width: 336px;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 18px 54px #0a17113b, 0 3px var(--line);
+  white-space: normal;
+  font: 400 13px/1.5 var(--font-geist-sans), sans-serif;
+}
+.desktop-download-menu p { margin: 0; }
+.desktop-download-platform,
+.desktop-download-privacy { color: var(--muted); }
+.desktop-download-platform { font-size: 12px; }
+.desktop-download-status { overflow-wrap: anywhere; }
+.desktop-download-option { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.desktop-download-option > strong { font-size: 14px; }
+.desktop-download-version { font-size: 11px; font-weight: 400; overflow-wrap: anywhere; }
+.desktop-download-link {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-size);
+  padding: 8px 12px;
+  border: 1px solid var(--deep);
+  border-radius: 8px;
+  background: var(--deep);
+  color: var(--paper);
+  font-weight: 600;
+  text-decoration: none;
+}
+.desktop-download-link:hover { opacity: .85; }
+.desktop-download-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.desktop-download-links > a { color: var(--ink); text-underline-offset: 3px; }
+.desktop-download-links > button {
+  min-height: var(--control-size);
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.desktop-download-links > button:hover { background: var(--panel); }
+.desktop-download-privacy { font-size: 11px; line-height: 1.5; }
+.desktop-download-menu a:focus-visible { outline: 2px solid var(--deep); outline-offset: 3px; }
+@media (max-width: 700px), (pointer: coarse) {
+  .desktop-download-button { padding: 0 9px; }
+  .desktop-download-label { display: none; }
+  .desktop-download-short-label { display: inline; }
+}
